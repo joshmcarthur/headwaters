@@ -1,0 +1,162 @@
+---
+import "maplibre-gl/dist/maplibre-gl.css";
+import "../../../design/Headwaters/tokens.css";
+import "../../../design/Headwaters/components/bundle.css";
+import "../styles/app.css";
+import { copy } from "../lib/copy";
+---
+
+<html lang="en-NZ" data-theme="paper">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{copy.title}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,400..600&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:ital,wght@0,300..700;1,400..600&display=swap"
+      rel="stylesheet"
+    />
+    <script is:inline>
+      (function () {
+        var stored = null;
+        try {
+          stored = localStorage.getItem("headwaters-theme");
+        } catch (e) {}
+        var pref =
+          stored === "system" || stored === "paper" || stored === "dusk"
+            ? stored
+            : "system";
+        var theme =
+          pref === "paper" || pref === "dusk"
+            ? pref
+            : window.matchMedia("(prefers-color-scheme: dark)").matches
+              ? "dusk"
+              : "paper";
+        document.documentElement.setAttribute("data-theme", theme);
+      })();
+    </script>
+  </head>
+  <body class="hw">
+    <div class="hw-app">
+      <div id="map" class="hw-map" role="application" aria-label="River map"></div>
+
+      <header class="hw-chrome">
+        <div class="hw-mast">
+          <div class="hw-mast__brand">
+            <a class="hw-mast__name" href="/">{copy.title}</a>
+            <p class="hw-mast__tag">{copy.subtitle}</p>
+          </div>
+          <button
+            class="hw-iconbtn"
+            id="theme-cycle"
+            type="button"
+            aria-label={copy.themeSwitch}
+            title={copy.themeSwitch}
+          >
+            <svg
+              class="hw-icon"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.75"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="12" r="9"></circle>
+              <path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor" stroke="none"></path>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="hw-float-controls">
+        <div class="hw-mapctl" role="group" aria-label="Map controls">
+          <button class="hw-iconbtn" id="zoom-in" type="button" aria-label={copy.zoomIn}>+</button>
+          <button class="hw-iconbtn" id="zoom-out" type="button" aria-label={copy.zoomOut}>−</button>
+          <button class="hw-iconbtn" id="reset-north" type="button" aria-label={copy.resetNorth}>N</button>
+        </div>
+      </div>
+
+      <aside class="hw-dock">
+        <section id="empty-panel" class="hw-panel hw-empty-panel">
+          <div class="hw-empty" style="border: 0; padding: 0; text-align: left; background: transparent">
+            <h2>{copy.emptyTitle}</h2>
+            <p>{copy.empty}</p>
+          </div>
+        </section>
+
+        <section id="river-panel" class="hw-panel" hidden aria-live="polite">
+          <div>
+            <h1 class="hw-place heading-3">
+              <span id="place-maori"></span>
+              <small id="place-english" hidden></small>
+            </h1>
+            <p id="river-summary" class="body-sm" hidden></p>
+          </div>
+          <div class="hw-panel__stats">
+            <div class="hw-stat">
+              <span class="hw-stat__label">{copy.longestPath}</span>
+              <span>
+                <span id="length-value" class="hw-stat__value"></span>
+                <span id="length-unit" class="hw-stat__unit"></span>
+              </span>
+            </div>
+          </div>
+          <details class="hw-disc" id="source-to-sea" hidden>
+            <summary>
+              {copy.fromSourceToSea}
+              <svg
+                class="hw-icon"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.75"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M6 9l6 6 6-6"></path>
+              </svg>
+            </summary>
+            <div class="hw-disc__body">
+              <table class="hw-table">
+                <tbody id="source-to-sea-body"></tbody>
+              </table>
+            </div>
+          </details>
+          <p id="gap-note" class="body-sm" hidden>{copy.gap}</p>
+        </section>
+      </aside>
+
+      <div class="hw-attr hw-attr-wrap">
+        <span><a href={copy.attributionCreatedHref}>{copy.attributionCreated}</a></span>
+        <span> · </span>
+        <span><a href={copy.attributionLicence}>{copy.attributionNetwork}</a></span>
+        <span> · </span>
+        <span>{copy.attributionNames}</span>
+      </div>
+    </div>
+    <script>
+      import { mountMap } from "../components/MapView";
+      import { mountTheme } from "../lib/theme";
+
+      const themeButton = document.querySelector("#theme-cycle");
+      if (themeButton instanceof HTMLButtonElement) {
+        mountTheme(themeButton);
+      }
+
+      mountMap().catch((err: unknown) => {
+        console.error(err);
+        const empty = document.querySelector("#empty-panel p");
+        if (empty) empty.textContent =
+          "The river data didn't load. Check your connection and try again.";
+      });
+    </script>
+  </body>
+</html>

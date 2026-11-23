@@ -1,0 +1,206 @@
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--surface-100, #f6f1e7);
+  color: var(--ink, #232622);
+}
+
+html {
+  color-scheme: light;
+}
+
+html[data-theme="dusk"] {
+  color-scheme: dark;
+}
+
+.hw-mast__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6, 24px);
+  min-width: 0;
+}
+
+.hw-mast #theme-cycle {
+  flex: none;
+}
+
+@media (max-width: 640px) {
+  .hw-mast__tag {
+    display: none;
+  }
+}
+
+.hw-app {
+  position: relative;
+  height: 100dvh;
+  overflow: hidden;
+  --dock-offset: 0px;
+}
+
+.hw-map {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-map, 0);
+}
+
+.hw-map .maplibregl-map,
+.hw-map .maplibregl-canvas,
+.hw-map .maplibregl-canvas-container {
+  width: 100%;
+  height: 100%;
+}
+
+.hw-map .maplibregl-ctrl-attrib,
+.hw-map .maplibregl-ctrl-bottom-left,
+.hw-map .maplibregl-ctrl-bottom-right {
+  display: none;
+}
+
+.hw-chrome {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: var(--z-panel, 20);
+  pointer-events: none;
+}
+
+.hw-chrome > * {
+  pointer-events: auto;
+}
+
+.hw-mast {
+  background: color-mix(in srgb, var(--surface-200, #fcfaf4) 92%, transparent);
+}
+
+.hw-float-controls {
+  position: absolute;
+  top: calc(var(--space-16, 64px) + var(--space-3, 12px));
+  right: var(--space-4, 16px);
+  z-index: var(--z-controls, 10);
+}
+
+.hw-dock {
+  position: absolute;
+  z-index: var(--z-panel, 20);
+  left: var(--space-4, 16px);
+  bottom: var(--space-4, 16px);
+  max-height: min(70dvh, 520px);
+  overflow: auto;
+}
+
+.hw-attr-wrap {
+  position: absolute;
+  right: var(--space-4, 16px);
+  bottom: var(--space-4, 16px);
+  z-index: var(--z-controls, 10);
+  max-width: 42ch;
+}
+
+@media (max-width: 720px) {
+  .hw-app {
+    --dock-offset: var(--sheet-peek, 96px);
+  }
+
+  .hw-dock {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    max-height: none;
+  }
+
+  .hw-dock .hw-panel {
+    width: 100%;
+    max-width: none;
+    border-radius: var(--radius-xl, 16px) var(--radius-xl, 16px) 0 0;
+    box-shadow: var(--shadow-sheet);
+  }
+
+  .hw-attr-wrap {
+    left: var(--space-3, 12px);
+    right: auto;
+    max-width: min(42ch, calc(100% - 72px));
+    bottom: calc(var(--dock-offset) + var(--space-2, 8px));
+  }
+
+  .hw-float-controls {
+    top: auto;
+    right: var(--space-3, 12px);
+    bottom: calc(var(--dock-offset) + var(--space-3, 12px));
+  }
+}
+
+.hw-panel[hidden],
+.hw-empty-panel[hidden] {
+  display: none;
+}
+
+/* PlaceName secondary line is display:block in the design bundle, which
+   overrides the hidden attribute. Empty English names must not leave a gap. */
+.hw-place small:empty,
+.hw-place small[hidden] {
+  display: none;
+}
+
+/* RiverPanel renders name + optional summary as one block, then stats.
+   Without a summary the empty paragraph and default <p> margin left a
+   vacant band under the title. */
+#river-panel {
+  gap: var(--space-2, 8px);
+}
+
+#river-panel .body-sm {
+  margin: 0;
+}
+
+#river-summary:not([hidden]):not(:empty) {
+  margin-top: var(--space-2, 8px);
+  color: var(--ink-muted);
+}
+
+#river-panel .hw-panel__stats {
+  grid-template-columns: 1fr;
+  padding-block: var(--space-3, 12px);
+}
+
+.hw-empty-panel {
+  width: var(--panel-width, 360px);
+  max-width: 100%;
+}
+
+.hw-dock--expanded {
+  height: min(85vh, calc(100dvh - var(--space-16, 64px) - var(--space-8, 32px)));
+  max-height: min(85vh, calc(100dvh - var(--space-16, 64px) - var(--space-8, 32px)));
+  display: flex;
+  flex-direction: column;
+}
+
+.hw-dock--expanded .hw-panel {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.hw-dock--expanded #source-to-sea {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-bottom: 0;
+}
+
+.hw-dock--expanded #source-to-sea .hw-disc__body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+#source-to-sea[hidden] {
+  display: none;
+}
+
+#source-to-sea-body tr[aria-current="location"] {
+  background: var(--surface-300, #efe8d8);
+}
