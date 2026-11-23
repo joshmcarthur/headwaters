@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   connectedNetwork,
+  encodeCompact,
   furthestSource,
   GapError,
+  loadCompactGraph,
   maxPathLength,
   riverGraphView,
   walkDownstream,
@@ -56,4 +58,34 @@ test("max path length through B is source to sink", () => {
 test("connected network from D excludes A", () => {
   const ids = new Set(connectedNetwork(view, "D"));
   assert.deepEqual(ids, new Set(["D", "B", "C"]));
+});
+
+test("compact graph walks match the fixture", () => {
+  const compact = loadCompactGraph(
+    encodeCompact([
+      { id: 1, down: 2, length_m: 100 },
+      { id: 2, down: 3, length_m: 200 },
+      { id: 3, down: 0, length_m: 300 },
+      { id: 4, down: 2, length_m: 50 },
+    ]),
+  );
+  assert.deepEqual(walkDownstream(compact, 1), [1, 2, 3]);
+  assert.deepEqual(new Set(walkUpstream(compact, 3)), new Set([1, 2, 3, 4]));
+  const max = maxPathLength(compact, 2);
+  assert.equal(max.source, 1);
+  assert.equal(max.metres, 600);
+  assert.deepEqual(new Set(connectedNetwork(compact, 4)), new Set([4, 2, 3]));
+});
+
+test("compact graph interned names round-trip", () => {
+  const compact = loadCompactGraph(
+    encodeCompact([
+      { id: 1, down: 2, length_m: 100, name: "Te Awa Kairangi / Hutt River" },
+      { id: 2, down: 0, length_m: 200, name: "Te Awa Kairangi / Hutt River" },
+      { id: 3, down: 2, length_m: 50, name: null },
+    ]),
+  );
+  assert.equal(compact.name(1), "Te Awa Kairangi / Hutt River");
+  assert.equal(compact.name(2), "Te Awa Kairangi / Hutt River");
+  assert.equal(compact.name(3), null);
 });
