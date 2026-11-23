@@ -1,4 +1,4 @@
-from headwaters_pipeline.export_graph import records_from_rows
+from headwaters_pipeline.export_graph import official_name, records_from_rows
 
 
 def test_nextdownid_maps_through_hydro_to_nzsegment() -> None:
@@ -17,3 +17,11 @@ def test_unmapped_down_keeps_foreign_id() -> None:
 def test_zero_and_minus_one_are_sinks() -> None:
     rows = [(1, 10, 0, 2.0), (2, 20, -1, 3.0)]
     assert records_from_rows(rows) == [(1, 0, 2.0), (2, 0, 3.0)]
+
+
+def test_gazetteer_overlay_is_exact_rivname_only() -> None:
+    assert official_name("Hutt River") == "Te Awa Kairangi / Hutt River"
+    assert official_name("Western Hutt River") == "Western Hutt River"
+    assert official_name("Eastern Hutt River") == "Eastern Hutt River"
+    assert official_name("  Hutt River  ") == "Te Awa Kairangi / Hutt River"
+    assert official_name("") == ""
