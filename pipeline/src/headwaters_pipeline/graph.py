@@ -87,3 +87,72 @@ def walk_upstream(graph: Graph, start: SegmentId) -> list[SegmentId]:
         found.append(current)
         stack.extend(up.get(current, []))
     return found
+
+
+def furthest_source(graph: Graph, start: SegmentId) -> tuple[SegmentId, float]:
+    """Headwater that maximises path length along the network to ``start``.
+
+    Distance is the sum of ``length_m`` on the path from the source to ``start``,
+    excluding ``start`` itself (see fixture: A→B→C is 300, not 600).
+    """
+    if start not in graph:
+        raise KeyError(start)
+    up = build_up_index(graph)
+    best_id: SegmentId = start
+    best_dist = 0.0
+
+    def visit(node: SegmentId, dist_above: float) -> None:
+        nonlocal best_id, best_dist
+        parents = up.get(node, [])
+        if not parents:
+            if dist_above > best_dist or (
+                dist_above == best_dist and node != start and best_id == start
+            ):
+                best_id = node
+                best_dist = dist_above
+            elif dist_above > best_dist:
+                best_id = node
+                best_dist = dist_above
+            return
+        for parent in parents:
+            parent_len = float(graph[parent]["length_m"])  # type: ignore[arg-type]
+            visit(parent, dist_above + parent_len)
+
+    visit(start, 0.0)
+    return best_id, best_dist
+
+
+def connected_network(graph: Graph, start: SegmentId) -> list[SegmentId]:
+    """Upstream ∪ downstream of ``start``, self once."""
+    down = walk_downstream(graph, start)
+    up = walk_upstream(graph, start)
+    seen: set[SegmentId] = set()
+    ordered: list[SegmentId] = []
+    for sid in up + down:
+        if sid not in seen:
+            seen.add(sid)
+            ordered.append(sid)
+    return ordered
+
+
+def max_path_length_m(graph: Graph, start: SegmentId) -> tuple[SegmentId, list[SegmentId], float]:
+    """Longest directed path in the connected network through ``start``.
+
+    Furthest upstream source → ``start`` → sink. Returns (source id, path, metres).
+    """
+    source, dist_to_start = furthest_source(graph, start)
+    down_path = walk_downstream(graph, start)
+    down_len = sum(float(graph[sid]["length_m"]) for sid in down_path)  # type: ignore[arg-type]
+    path = _path_from_source(graph, source, start) + down_path[1:]
+    return source, path, dist_to_start + down_len
+
+
+def _path_from_source(graph: Graph, source: SegmentId, start: SegmentId) -> list[SegmentId]:
+    if source == start:
+        return [start]
+    path = walk_downstream(graph, source)
+    try:
+        i = path.index(start)
+    except ValueError as exc:
+        raise GapError(source, start) from exc
+    return path[: i + 1]
