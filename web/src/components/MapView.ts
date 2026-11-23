@@ -115,6 +115,18 @@ function featureId(raw: unknown): number | null {
   return null;
 }
 
+type HistoryMode = "push" | "none";
+
+function hashSegmentId(hash: string): number | null {
+  if (!hash.startsWith("#") || hash.length < 2) return null;
+  return featureId(hash.slice(1));
+}
+
+function urlForSegment(id: number | null): string {
+  const base = `${location.pathname}${location.search}`;
+  return id == null ? base : `${base}#${id}`;
+}
+
 function sourceToSeaDetails(): HTMLDetailsElement {
   return el<HTMLDetailsElement>("source-to-sea");
 }
@@ -253,6 +265,8 @@ export async function mountMap(): Promise<void> {
   map.on("error", (ev) => {
     console.error(ev.error || ev);
   });
+
+  let riversReady = false;
 
   const addRivers = (): void => {
     if (map.getSource("reaches")) return;
@@ -415,6 +429,7 @@ export async function mountMap(): Promise<void> {
         "line-width": ["interpolate", ["linear"], ["zoom"], 4, 8, 12, 16],
       },
     });
+    riversReady = true;
   };
 
   if (map.loaded()) addRivers();
@@ -452,12 +467,20 @@ export async function mountMap(): Promise<void> {
     setContextDim(false);
   };
 
-  const clear = (): void => {
-    paintClear();
-    updatePanel(graph, null, false);
+  const recordHash = (id: number | null): void => {
+    const next = urlForSegment(id);
+    const current = `${location.pathname}${location.search}${location.hash}`;
+    if (current === next) return;
+    history.pushState(null, "", next);
   };
 
-  const select = (id: number): void => {
+  const clear = (historyMode: HistoryMode): void => {
+    paintClear();
+    updatePanel(graph, null, false);
+    if (historyMode === "push") recordHash(null);
+  };
+
+  const select = (id: number, historyMode: HistoryMode): void => {
     if (!graph.has(id)) return;
     paintClear();
     let gap = false;
@@ -488,6 +511,17 @@ export async function mountMap(): Promise<void> {
     }
     setContextDim(true);
     updatePanel(graph, id, gap);
+    if (historyMode === "push") recordHash(id);
+  };
+
+  const applyHash = (): void => {
+    if (!riversReady) return;
+    const id = hashSegmentId(location.hash);
+    if (id != null && graph.has(id)) {
+      select(id, "none");
+      return;
+    }
+    clear("none");
   };
 
   map.on("click", (ev) => {
@@ -504,10 +538,10 @@ export async function mountMap(): Promise<void> {
     const raw = hit ? (hit.id ?? hit.properties?.nzsegment) : null;
     const id = featureId(raw);
     if (id == null) {
-      clear();
+      clear("push");
       return;
     }
-    select(id);
+    select(id, "push");
   });
 
   map.on("mouseenter", "reaches-hit", () => {
@@ -534,8 +568,11 @@ export async function mountMap(): Promise<void> {
       closeSourceToSea();
       return;
     }
-    clear();
+    clear("push");
   });
+  window.addEventListener("hashchange", applyHash);
+  if (riversReady) applyHash();
+  else map.on("load", applyHash);
   window.addEventListener(THEME_EVENT, () => {
     paint = readPaint();
     applyMapPaint(map, paint);
