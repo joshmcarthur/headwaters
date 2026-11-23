@@ -78,6 +78,16 @@ import { copy } from "../lib/copy";
           <button class="hw-iconbtn" id="zoom-in" type="button" aria-label={copy.zoomIn}>+</button>
           <button class="hw-iconbtn" id="zoom-out" type="button" aria-label={copy.zoomOut}>−</button>
           <button class="hw-iconbtn" id="reset-north" type="button" aria-label={copy.resetNorth}>N</button>
+          <button
+            class="hw-iconbtn"
+            id="terrain-toggle"
+            type="button"
+            aria-label={copy.terrainLabel}
+            aria-pressed="false"
+            title={copy.terrainLabel}
+          >
+            {copy.terrainToggle}
+          </button>
         </div>
       </div>
 
@@ -140,6 +150,8 @@ import { copy } from "../lib/copy";
         <span><a href={copy.attributionLicence}>{copy.attributionNetwork}</a></span>
         <span> · </span>
         <span>{copy.attributionNames}</span>
+        <span> · </span>
+        <span>{copy.attributionTerrain}</span>
       </div>
     </div>
     <script>

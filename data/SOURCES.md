@@ -57,4 +57,4 @@ Packed names live in `reaches.bin` (HWG1 v2 string table). Unnamed stays unnamed
 
 - Watershed polygons (MVP does not paint catchments)
 - Nationwide GeoJSON
-- LINZ Basemaps terrain (issue 008, not-MVP)
+- LINZ Basemaps terrain (issue 008). The 3D view reads Mapterhorn Terrarium tiles at render time from `https://tiles.mapterhorn.com/tilejson.json`. This extract does not store a DEM.
