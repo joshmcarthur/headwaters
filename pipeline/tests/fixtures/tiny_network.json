@@ -1,0 +1,6 @@
+{
+  "A": { "down": "B", "length_m": 100, "catarea_m2": 10, "headwater": true },
+  "B": { "down": "C", "length_m": 200, "catarea_m2": 20, "headwater": false },
+  "C": { "down": 0, "length_m": 300, "catarea_m2": 30, "headwater": false },
+  "D": { "down": "B", "length_m": 50, "catarea_m2": 5, "headwater": true }
+}
