@@ -1,0 +1,38 @@
+<!-- @dsCard height=288 -->
+<!doctype html>
+<html lang="en-NZ"><head><meta charset="utf-8"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400&family=Source+Sans+3:wght@400&display=swap">
+<style>
+html,body{margin:0}
+.cover{position:relative;width:960px;height:288px;overflow:hidden;background:var(--surface-100)}
+.cover svg{position:absolute;inset:0}
+.cover .txt{position:absolute;left:32px;bottom:32px;max-width:440px}
+.cover .name{font:400 72px/.95 var(--font-serif);letter-spacing:-0.01em;color:var(--ink);margin:0}
+.cover .tag{font:400 14px/20px var(--font-sans);color:var(--ink-muted);margin:16px 0 0}
+.blk{rx:var(--radius-md)}
+.b-river{fill:var(--river)}.b-accent{fill:var(--accent)}.b-forest{fill:var(--forest)}.b-tussock{fill:var(--tussock)}.b-earth{fill:var(--earth)}
+.cut{fill:none;stroke:var(--surface-100);stroke-linecap:round;stroke-width:2}.cut.t{stroke-width:3}.cut.f{stroke-width:1.5}
+</style></head>
+<body><div class="cover">
+<svg width="960" height="288" viewBox="0 0 960 288" aria-hidden="true">
+<!-- blocks: river 192x288 slab, accent 256x112 bleeding right, forest 112x160, tussock 128x96, earth 128x48 (space-4 gaps, radius-md)
+     arrangement: staggered stack, one tall river slab with four satellites off the top and right edges
+     pattern: literal motif, a branching river network drawn in surface-100 across the blocks, chosen because branching is the brand's primary shape
+     steps: space-4 (16) gaps, 16-multiples for sides; radius-md corners -->
+<rect class="blk b-river" x="496" y="0" width="192" height="288" rx="4"/>
+<rect class="blk b-accent" x="704" y="0" width="256" height="112" rx="4"/>
+<rect class="blk b-forest" x="704" y="128" width="112" height="160" rx="4"/>
+<rect class="blk b-tussock" x="832" y="128" width="128" height="96" rx="4"/>
+<rect class="blk b-earth" x="832" y="240" width="128" height="48" rx="4"/>
+<path class="cut t" d="M592 288C592 250 596 222 600 196"/>
+<path class="cut" d="M600 196C580 160 548 140 520 104"/>
+<path class="cut f" d="M548 140C540 120 530 96 526 64"/>
+<path class="cut" d="M600 196C628 168 664 150 700 120"/>
+<path class="cut f" d="M664 150C700 140 740 120 770 80"/>
+<path class="cut f" d="M770 80C790 62 800 46 812 24"/>
+<path class="cut f" d="M700 120C730 104 760 100 790 60"/>
+<path class="cut" d="M600 196C640 222 690 232 730 214"/>
+<path class="cut f" d="M730 214C760 200 786 206 812 232"/>
+<path class="cut f" d="M690 232C700 250 706 262 712 288"/>
+</svg>
+<div class="txt"><h1 class="name">Headwaters</h1><p class="tag">Ki uta ki tai: from the mountains to the sea.</p></div>
+</div></body></html>

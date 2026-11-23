@@ -1,0 +1,269 @@
+{
+  "manifestVersion": 3,
+  "name": "Headwaters",
+  "namespace": "Headwaters",
+  "files": [
+    "components/Attribution/README.md",
+    "components/Badge/README.md",
+    "components/BottomSheet/README.md",
+    "components/Breadcrumbs/README.md",
+    "components/Button/README.md",
+    "components/Callout/README.md",
+    "components/Card/README.md",
+    "components/Checkbox/README.md",
+    "components/Contours/README.md",
+    "components/CoordinateLabel/README.md",
+    "components/DefinitionList/README.md",
+    "components/Dialog/README.md",
+    "components/Disclosure/README.md",
+    "components/ElevationProfile/README.md",
+    "components/EmptyState/README.md",
+    "components/Icon/README.md",
+    "components/IconButton/README.md",
+    "components/JourneyBar/README.md",
+    "components/Legend/README.md",
+    "components/Loader/README.md",
+    "components/MapControls/README.md",
+    "components/Marker/README.md",
+    "components/Masthead/README.md",
+    "components/PlaceName/README.md",
+    "components/RiverMotif/README.md",
+    "components/RiverPanel/README.md",
+    "components/ScaleBar/README.md",
+    "components/SearchField/README.md",
+    "components/SegmentedControl/README.md",
+    "components/Select/README.md",
+    "components/Skeleton/README.md",
+    "components/Slider/README.md",
+    "components/Stat/README.md",
+    "components/Switch/README.md",
+    "components/Table/README.md",
+    "components/Tabs/README.md",
+    "components/TextField/README.md",
+    "components/Toast/README.md",
+    "components/Tooltip/README.md",
+    "components/TributaryList/README.md",
+    "components/bundle.css",
+    "components/bundle.js",
+    "components/index.d.ts",
+    "tokens.css"
+  ],
+  "libraries": [
+    {
+      "name": "react",
+      "version": "18",
+      "global": "React"
+    },
+    {
+      "name": "react-dom",
+      "version": "18",
+      "global": "ReactDOM"
+    }
+  ],
+  "components": [
+    {
+      "name": "Icon",
+      "group": "Foundations",
+      "summary": "Inline stroke icons on a 24px grid, drawn at 1.75px with round caps, for controls and map markers."
+    },
+    {
+      "name": "Button",
+      "group": "Actions",
+      "summary": "A text button in five variants and three sizes; renders an a when href is given."
+    },
+    {
+      "name": "IconButton",
+      "group": "Actions",
+      "summary": "A square icon-only button with a required accessible name."
+    },
+    {
+      "name": "TextField",
+      "group": "Forms",
+      "summary": "A labelled text input or textarea with hint and error text."
+    },
+    {
+      "name": "SearchField",
+      "group": "Forms",
+      "summary": "The floating search combobox that finds a river or stream by name."
+    },
+    {
+      "name": "Select",
+      "group": "Forms",
+      "summary": "A native select with the Headwaters field styling."
+    },
+    {
+      "name": "Checkbox",
+      "group": "Forms",
+      "summary": "Checkbox for independent options and Radio for one-of-many, with 22px targets and a 44px row."
+    },
+    {
+      "name": "Radio"
+    },
+    {
+      "name": "Switch",
+      "group": "Forms",
+      "summary": "A switch for settings that take effect immediately."
+    },
+    {
+      "name": "Slider",
+      "group": "Forms",
+      "summary": "A range input with a visible label and value readout in mono."
+    },
+    {
+      "name": "SegmentedControl",
+      "group": "Forms",
+      "summary": "A radio-group segmented toggle for two to four exclusive choices."
+    },
+    {
+      "name": "Tabs",
+      "group": "Navigation",
+      "summary": "Tabs with roving focus and arrow-key navigation, for panels that hold two to four views."
+    },
+    {
+      "name": "Breadcrumbs",
+      "group": "Navigation",
+      "summary": "A breadcrumb trail for the place hierarchy of the atlas."
+    },
+    {
+      "name": "Masthead",
+      "group": "Navigation",
+      "summary": "The site header with the Headwaters wordmark set in plain serif type and the ki uta ki tai subtitle."
+    },
+    {
+      "name": "MapControls",
+      "group": "Navigation",
+      "summary": "A vertical group of map buttons for zoom, reset north, locate, layers and the 3D toggle."
+    },
+    {
+      "name": "Callout",
+      "group": "Feedback",
+      "summary": "An inline message with an icon, a short title and a sentence of detail."
+    },
+    {
+      "name": "Toast",
+      "group": "Feedback",
+      "summary": "A short confirmation that appears above the map and goes away by itself."
+    },
+    {
+      "name": "Tooltip",
+      "group": "Feedback",
+      "summary": "A short text label that appears on hover and keyboard focus."
+    },
+    {
+      "name": "Badge",
+      "group": "Feedback",
+      "summary": "A compact label for status or category."
+    },
+    {
+      "name": "Skeleton",
+      "group": "Feedback",
+      "summary": "A pulsing placeholder block for text while data loads."
+    },
+    {
+      "name": "Loader",
+      "group": "Feedback",
+      "summary": "A loading state where a branching river network draws itself, with a plain-language message."
+    },
+    {
+      "name": "EmptyState",
+      "group": "Feedback",
+      "summary": "An empty panel with faint contour lines, a title, one sentence and a next step."
+    },
+    {
+      "name": "Dialog",
+      "group": "Overlays",
+      "summary": "A modal dialog over a scrim for confirmations that need a decision."
+    },
+    {
+      "name": "BottomSheet",
+      "group": "Overlays",
+      "summary": "A bottom sheet that holds the river panel on mobile, with three heights: peek, half and full."
+    },
+    {
+      "name": "Card",
+      "group": "Data display",
+      "summary": "A bordered surface for a single idea, with optional eyebrow, title, footer and contour background."
+    },
+    {
+      "name": "Stat",
+      "group": "Data display",
+      "summary": "A labelled measurement: serif figure, mono unit, optional hint."
+    },
+    {
+      "name": "DefinitionList",
+      "group": "Data display",
+      "summary": "A two-column list of terms and plain-language details."
+    },
+    {
+      "name": "Table",
+      "group": "Data display",
+      "summary": "A compact table with right-aligned mono numerals."
+    },
+    {
+      "name": "Disclosure",
+      "group": "Data display",
+      "summary": "An expandable section built on the native details element."
+    },
+    {
+      "name": "Legend",
+      "group": "Map",
+      "summary": "The map key."
+    },
+    {
+      "name": "Marker",
+      "group": "Map",
+      "summary": "Map markers with different shapes: a ringed circle for a source, a diamond for a destination and a crosshair for the selected point."
+    },
+    {
+      "name": "ElevationProfile",
+      "group": "Map",
+      "summary": "A compact elevation profile from source to mouth, drawn as SVG with a labelled start and end."
+    },
+    {
+      "name": "PlaceName",
+      "group": "Map",
+      "summary": "A place name that shows official Māori and English names together, with the right language tag on each."
+    },
+    {
+      "name": "CoordinateLabel",
+      "group": "Map",
+      "summary": "A small mono coordinate label, with an optional grid-red leader line in the manner of Topo50 annotations."
+    },
+    {
+      "name": "RiverPanel",
+      "group": "Map",
+      "summary": "The floating panel that shows the selected river: name, summary, length, catchment area, source, destination and the three main actions."
+    },
+    {
+      "name": "TributaryList",
+      "group": "Map",
+      "summary": "A list of tributaries with a checkbox to show each on the map and its length."
+    },
+    {
+      "name": "JourneyBar",
+      "group": "Map",
+      "summary": "A compact source-to-sea strip showing the stage of the river, with elevation and distance at each."
+    },
+    {
+      "name": "ScaleBar",
+      "group": "Map",
+      "summary": "A map scale bar in kilometres."
+    },
+    {
+      "name": "Contours",
+      "group": "Map",
+      "summary": "A procedural set of contour lines for introductions, cards and empty states."
+    },
+    {
+      "name": "RiverMotif",
+      "group": "Map",
+      "summary": "A procedural branching river illustration for section dividers, empty states and loading."
+    },
+    {
+      "name": "Attribution",
+      "group": "Map",
+      "summary": "A small attribution line for the map."
+    }
+  ],
+  "assetGroups": []
+}

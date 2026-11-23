@@ -1,0 +1,13 @@
+<!-- @dsCard group="Map" height=240 subtitle="Faint contour lines for backgrounds" -->
+<!doctype html>
+<html lang="en-NZ"><head><meta charset="utf-8"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,400..600&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:ital,wght@0,300..700;1,400..600&display=swap"></head>
+<body class="hw" style="padding:16px"><div id="root"></div>
+<script>
+const H=window.Headwaters,h=React.createElement;
+const {Icon, Button, IconButton, TextField, SearchField, Select, Checkbox, Radio, Switch, Slider, SegmentedControl, Tabs, Breadcrumbs, Masthead, MapControls, Callout, Toast, Tooltip, Badge, Skeleton, Loader, EmptyState, Dialog, BottomSheet, Card, Stat, DefinitionList, Table, Disclosure, Legend, Marker, ElevationProfile, PlaceName, CoordinateLabel, RiverPanel, TributaryList, JourneyBar, ScaleBar, Contours, RiverMotif, Attribution}=H;
+const col=(gap,...c)=>h('div',{style:{display:'flex',flexDirection:'column',gap}},...c);
+const row=(gap,...c)=>h('div',{style:{display:'flex',flexWrap:'wrap',gap,alignItems:'center'}},...c);
+const HUTT={maori:'Te Awa Kairangi',english:'Hutt River'};
+const PROFILE=[[0,820],[4,610],[9,380],[16,210],[24,120],[34,60],[44,22],[52,6],[56,0]];
+ReactDOM.createRoot(document.getElementById('root')).render(h('div',{style:{position:'relative',height:200,background:'var(--surface-100)',border:'1px solid var(--hairline)',borderRadius:10,overflow:'hidden'}},h(Contours,{seed:5})));
+</script></body></html>
