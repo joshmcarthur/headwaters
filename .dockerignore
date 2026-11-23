@@ -1,0 +1,12 @@
+.git
+data/raw
+data/derived
+pipeline
+tmp
+docs
+**/.DS_Store
+**/node_modules
+**/.venv
+**/__pycache__
+web/dist
+web/.astro

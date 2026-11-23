@@ -1,0 +1,45 @@
+name: Publish image
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download river data
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p web/public/data
+          if ! gh release download data --repo "${{ github.repository }}" --dir web/public/data; then
+            echo "Missing GitHub Release tag 'data' with reaches.bin and reaches.pmtiles."
+            echo "Create it from a machine that has the files (see README.md)."
+            exit 1
+          fi
+          test -s web/public/data/reaches.bin
+          test -s web/public/data/reaches.pmtiles
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ github.sha }}
+            ghcr.io/${{ github.repository }}:latest

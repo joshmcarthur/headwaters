@@ -1,0 +1,7 @@
+services:
+  web:
+    image: ghcr.io/joshmcarthur/headwaters:latest
+    build: .
+    ports:
+      - "80:80"
+    restart: unless-stopped
