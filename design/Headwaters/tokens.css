@@ -1,0 +1,335 @@
+/* Headwaters — generated from tokens.json */
+:root, [data-theme="paper"] {
+  --surface-100: #f6f1e7; /* Page and map-land ground. Text sits on this in body copy. */
+  --surface-200: #fcfaf4; /* Raised panels, cards, sheets, dialogs and floating controls above the map. */
+  --surface-300: #e9e2d2; /* Sunken fields, hover wash, table header, skeleton blocks. */
+  --surface-inverse: #22302f; /* Tooltips and toasts. Text on it is on-inverse. */
+  --on-inverse: #f6f1e7; /* Text on surface-inverse. */
+  --ink: #232622; /* Primary text on surface-100, surface-200 and surface-300. */
+  --ink-muted: #545a53; /* Secondary text, captions and helper text on surface-100 and surface-200. */
+  --ink-subtle: #66695f; /* Placeholder text and disabled labels on surface-100 and surface-200. Never for essential information. */
+  --link: #17566f; /* Inline links on surface-100 and surface-200. Always underlined. */
+  --hairline: #d8cfba; /* Decorative dividers, card outlines, table rules. Not for control edges. */
+  --border-control: #7a7867; /* Edges of inputs, checkboxes, segmented controls. 3:1 against its grounds. */
+  --focus: #0e5fa8; /* Focus ring. Two pixels, solid, offset by two pixels, on every surface. */
+  --river: #1f5f7a; /* Primary action fill and brand blue. Text on it is on-river. */
+  --river-hover: #174b61; /* Pressed and hover state of river fills. */
+  --river-soft: #dce9ec; /* Tint behind selected rows, info callouts and soft badges. */
+  --on-river: #ffffff; /* Text and icons on river and river-hover. */
+  --accent: #b1421a; /* Restrained highlight for sources, destinations and the one important action on screen. Text on it is on-accent. */
+  --accent-hover: #8f3412; /* Hover and pressed state of accent fills. */
+  --accent-soft: #f6e3d8; /* Tint behind accent badges and selected source or outlet rows. */
+  --on-accent: #ffffff; /* Text and icons on accent and accent-hover. */
+  --tussock: #7e7b3a; /* Tussock and olive land cover and decorative fills. Not for text. */
+  --forest: #3f6b4a; /* Forest land cover on the map and success icons. Pair with a label. */
+  --stone: #8d8878; /* Bare rock and scree on the map. Not for text. */
+  --earth: #8a6a4a; /* Terrain brown for relief shading and elevation labels on the map. */
+  --success: #2e6a3b; /* Success text and icons on surface-100, surface-200 and success-soft. Always paired with a check icon and a word. */
+  --success-soft: #e1eedf; /* Background of success callouts and badges. */
+  --warning: #8a5a00; /* Warning text and icons on surface-100, surface-200 and warning-soft. Always paired with a triangle icon and a word. */
+  --warning-soft: #f7eac8; /* Background of warning callouts and badges. */
+  --danger: #a12a1d; /* Error text and icons on surface-100, surface-200 and danger-soft. Always paired with a cross icon and a word. */
+  --danger-soft: #f6ddd7; /* Background of error callouts and badges. */
+  --info: #1f5f7a; /* Information text and icons on surface-100, surface-200 and info-soft. Always paired with an i icon. */
+  --info-soft: #dce9ec; /* Background of information callouts. */
+  --map-land: #f2ecdd; /* Base land colour of the map canvas. */
+  --map-water: #cfe0e3; /* Lakes, estuaries and sea fill on the map. */
+  --map-relief: #e4dac4; /* Gentle hillshade tint over land. */
+  --map-contour: #cdbf9f; /* Fine contour lines. Decorative on the map and in backgrounds; keep at hairline weight. */
+  --map-contour-index: #b3a27b; /* Every fifth contour, slightly stronger. */
+  --map-grid: #c98f7a; /* Map grid lines and grid references in the Topo50 manner. Hairline weight only. */
+  --map-river-context: #6e9aa6; /* Rivers that are not selected. Recessive on purpose; thin line weight keeps them readable and the selected states carry meaning. */
+  --map-river-selected: #0a6fa3; /* Selected waterway. Four pixels, solid, brightest blue on the map. */
+  --map-main-channel: #b1421a; /* Longest path to the source. Accent rust, not river blue, so it reads on the catchment. */
+  --map-upstream: #24635e; /* Upstream network and tributaries feeding the selection. Two pixels, solid. */
+  --map-downstream: #8a5a00; /* Downstream route to the sea. Three pixels, solid with chevrons, so it reads without colour. */
+  --map-main-halo: #f2ecdd; /* Cream casing around the longest path so it cuts through catchment green. */
+  --map-upstream-halo: #24635e4d; /* Soft casing under the catchment network so it reads against the sheet without a polygon. */
+  --map-catchment-stroke: #b1421a; /* Catchment boundary. Two pixels, dashed. */
+  --map-catchment-fill: #b1421a26; /* Catchment fill, with a diagonal hatch for non-colour distinction. */
+  --map-source: #b1421a; /* Source markers and leader lines. */
+  --map-outlet: #232622; /* Outlet and destination markers. */
+  --scrim: #232622a6; /* Backdrop behind dialogs. */
+  --profile-fill: #1f5f7a26; /* Area under an elevation profile. */
+  --shadow-float: 0 1px 2px #2326221f, 0 4px 14px #23262224; /* Panels, search field and map controls floating over the map. */
+  --shadow-sheet: 0 -2px 16px #2326221f; /* Bottom sheet on mobile. */
+  --shadow-dialog: 0 8px 32px #23262240; /* Dialogs above the scrim. */
+}
+[data-theme="dusk"] {
+  --surface-100: #161b1a;
+  --surface-200: #1f2625;
+  --surface-300: #101413;
+  --surface-inverse: #ece7da;
+  --on-inverse: #161b1a;
+  --ink: #ece7da;
+  --ink-muted: #b6b5a7;
+  --ink-subtle: #9e9d90;
+  --link: #8cc8e0;
+  --hairline: #33403e;
+  --border-control: #8a9a94;
+  --focus: #9bd0f0;
+  --river: #8cc8e0;
+  --river-hover: #a9d8ea;
+  --river-soft: #23383f;
+  --on-river: #0c2630;
+  --accent: #f29a72;
+  --accent-hover: #f7b08e;
+  --accent-soft: #3a241a;
+  --on-accent: #2a1006;
+  --tussock: #b1ae66;
+  --forest: #6fa27b;
+  --stone: #7a7b71;
+  --earth: #b08e6a;
+  --success: #7fc48e;
+  --success-soft: #1d3322;
+  --warning: #e8b04c;
+  --warning-soft: #3a2d0f;
+  --danger: #f08a7c;
+  --danger-soft: #3b1d19;
+  --info: #8cc8e0;
+  --info-soft: #23383f;
+  --map-land: #1a201f;
+  --map-water: #1e3438;
+  --map-relief: #232b29;
+  --map-contour: #3a443f;
+  --map-contour-index: #52605a;
+  --map-grid: #8b6153;
+  --map-river-context: #5e8a96;
+  --map-river-selected: #6fc2ee;
+  --map-main-channel: #f29a72;
+  --map-upstream: #79b7af;
+  --map-downstream: #e8b04c;
+  --map-main-halo: #1a201f;
+  --map-upstream-halo: #79b7af4d;
+  --map-catchment-stroke: #f29a72;
+  --map-catchment-fill: #f29a7226;
+  --map-source: #f29a72;
+  --map-outlet: #ece7da;
+  --scrim: #000000b3;
+  --profile-fill: #8cc8e02e;
+  --shadow-float: 0 1px 2px #00000066, 0 4px 14px #00000066;
+  --shadow-sheet: 0 -2px 16px #00000080;
+  --shadow-dialog: 0 8px 32px #000000a6;
+}
+[data-theme="contrast"] {
+  --surface-100: #ffffff;
+  --surface-200: #ffffff;
+  --surface-300: #ededed;
+  --surface-inverse: #000000;
+  --on-inverse: #ffffff;
+  --ink: #000000;
+  --ink-muted: #1a1a1a;
+  --ink-subtle: #2b2b2b;
+  --link: #003a5c;
+  --hairline: #6b6b6b;
+  --border-control: #000000;
+  --focus: #0033cc;
+  --river: #00406b;
+  --river-hover: #002b4a;
+  --river-soft: #e1eefa;
+  --on-river: #ffffff;
+  --accent: #8a2400;
+  --accent-hover: #7a2000;
+  --accent-soft: #ffe9de;
+  --on-accent: #ffffff;
+  --tussock: #5a5a1e;
+  --forest: #1f4f2e;
+  --stone: #595959;
+  --earth: #5c3f22;
+  --success: #1b5a2a;
+  --success-soft: #e3f5e5;
+  --warning: #6b4400;
+  --warning-soft: #fff2cc;
+  --danger: #8a1a10;
+  --danger-soft: #ffe5e0;
+  --info: #00406b;
+  --info-soft: #e1eefa;
+  --map-land: #ffffff;
+  --map-water: #cde6ff;
+  --map-relief: #dddddd;
+  --map-contour: #8a8a8a;
+  --map-contour-index: #555555;
+  --map-grid: #a33a1e;
+  --map-river-context: #2c6f85;
+  --map-river-selected: #003e8a;
+  --map-main-channel: #8a2400;
+  --map-upstream: #006b5e;
+  --map-downstream: #6b4400;
+  --map-main-halo: #ffffff;
+  --map-upstream-halo: #006b5e66;
+  --map-catchment-stroke: #a02f00;
+  --map-catchment-fill: #a02f0033;
+  --map-source: #a02f00;
+  --map-outlet: #000000;
+  --scrim: #000000cc;
+  --profile-fill: #00406b26;
+  --shadow-float: 0 0 0 1px #000000;
+  --shadow-sheet: 0 0 0 1px #000000;
+  --shadow-dialog: 0 0 0 2px #000000;
+}
+:root {
+  --space-1: 4px; /* Hairline gaps, icon to label. */
+  --space-2: 8px; /* Tight gaps inside controls and between chips. */
+  --space-3: 12px; /* Control padding, list row gaps. */
+  --space-4: 16px; /* Default padding for cards and panels. */
+  --space-5: 20px; /* Panel padding on desktop. */
+  --space-6: 24px; /* Gap between sections inside a panel. */
+  --space-8: 32px; /* Gap between panels and page sections. */
+  --space-10: 40px; /* Large section gaps. */
+  --space-12: 48px; /* Page margins on desktop. */
+  --space-16: 64px; /* Hero and empty-state breathing room. */
+  --space-24: 96px; /* Landing page section spacing. */
+  --control-sm: 36px; /* Compact controls inside dense panels. Not for touch-only surfaces. */
+  --control-md: 44px; /* Default control height. Meets the 44px touch target. */
+  --control-lg: 52px; /* Primary actions on mobile and the search field. */
+  --panel-width: 360px; /* Width of the floating information panel on desktop. */
+  --sheet-peek: 96px; /* Height of the bottom sheet when peeking above the map on mobile. */
+  --radius-sm: 2px; /* Chips, badges, table cells. Squared like instrument labels. */
+  --radius-md: 4px; /* Buttons, inputs, tooltips. */
+  --radius-lg: 10px; /* Cards and panels floating over the map. */
+  --radius-xl: 16px; /* Top corners of the bottom sheet and dialogs. */
+  --radius-pill: 9999px; /* Switches, search field and the map control group. */
+  --z-map: 0; /* Map canvas. */
+  --z-controls: 10; /* Map controls, scale bar, attribution. */
+  --z-panel: 20; /* Information panel and search field. */
+  --z-sheet: 30; /* Bottom sheet. */
+  --z-popover: 40; /* Tooltips and menus. */
+  --z-dialog: 50; /* Dialog and scrim. */
+  --z-toast: 60; /* Toasts above everything. */
+  --opacity-context: 0.7; /* Context rivers when a river is selected. */
+  --opacity-dimmed: 0.45; /* Map layers dimmed behind a dialog or while loading. */
+  --opacity-disabled: 0.5; /* Disabled controls. Pair with the disabled attribute. */
+  --line-hairline: 1px; /* Contours, grid lines, table rules. */
+  --line-context: 1px; /* Unselected rivers. */
+  --line-upstream: 2px; /* Upstream network and tributaries. */
+  --line-upstream-halo: 8px; /* Soft casing under the catchment network. */
+  --line-catchment: 2px; /* Catchment boundary, dashed. */
+  --line-downstream: 3px; /* Downstream route, with chevrons. */
+  --line-main: 3px; /* Longest path to the source. */
+  --line-main-halo: 7px; /* Cream casing around the longest path. */
+  --line-selected: 4px; /* Selected waterway. */
+  --line-focus: 2px; /* Focus ring thickness. */
+  --font-serif: "Fraunces", "Source Serif 4", Georgia, serif;
+  --font-sans: "Source Sans 3", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --text-display-xl: 400 56px/60px var(--font-serif); /* Landing page title. One per page. */
+  --text-display-lg: 400 40px/46px var(--font-serif); /* Panel title when a named river is selected on a large screen. */
+  --text-heading-1: 500 32px/38px var(--font-serif); /* Page heading. */
+  --text-heading-2: 500 26px/32px var(--font-serif); /* Section heading inside panels. */
+  --text-heading-3: 500 21px/28px var(--font-serif); /* Card and dialog titles. */
+  --text-heading-4: 600 17px/24px var(--font-serif); /* Small group headings. Sentence case. */
+  --text-body-lg: 400 18px/28px var(--font-sans); /* Introductions and empty states. */
+  --text-body: 400 16px/24px var(--font-sans); /* Default body copy and panel text. */
+  --text-body-sm: 400 14px/20px var(--font-sans); /* Helper text, table cells, secondary panel text. */
+  --text-label: 600 14px/20px var(--font-sans); /* Form labels, button text, tab labels. */
+  --text-caption: 400 12.5px/18px var(--font-sans); /* Captions, attribution, map labels. */
+  --text-coordinate: 400 13px/18px var(--font-mono); /* Coordinates beside sources and outlets. Tabular figures. */
+  --text-measure: 500 14px/20px var(--font-mono); /* Distances, areas and elevations in tables and panels. */
+  --text-figure-lg: 400 34px/38px var(--font-serif); /* Headline measurement in a panel. Set in the serif. */
+  --text-figure-md: 500 22px/28px var(--font-serif); /* Secondary measurement. Set in the serif. */
+}
+.display-xl {
+  font-family: var(--font-serif);
+  font-size: 56px;
+  line-height: 60px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+.display-lg {
+  font-family: var(--font-serif);
+  font-size: 40px;
+  line-height: 46px;
+  font-weight: 400;
+  letter-spacing: -0.005em;
+}
+.heading-1 {
+  font-family: var(--font-serif);
+  font-size: 32px;
+  line-height: 38px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.heading-2 {
+  font-family: var(--font-serif);
+  font-size: 26px;
+  line-height: 32px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.heading-3 {
+  font-family: var(--font-serif);
+  font-size: 21px;
+  line-height: 28px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.heading-4 {
+  font-family: var(--font-serif);
+  font-size: 17px;
+  line-height: 24px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.body-lg {
+  font-family: var(--font-sans);
+  font-size: 18px;
+  line-height: 28px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.body {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.body-sm {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.label {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.caption {
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  line-height: 18px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.coordinate {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+.measure {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.figure-lg {
+  font-family: var(--font-serif);
+  font-size: 34px;
+  line-height: 38px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.figure-md {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
