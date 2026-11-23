@@ -21,12 +21,13 @@ jobs:
         run: |
           mkdir -p web/public/data
           if ! gh release download data --repo "${{ github.repository }}" --dir web/public/data; then
-            echo "Missing GitHub Release tag 'data' with reaches.bin and reaches.pmtiles."
+            echo "Missing GitHub Release tag 'data' with reaches.bin, reaches.pmtiles, and names.json."
             echo "Create it from a machine that has the files (see README.md)."
             exit 1
           fi
           test -s web/public/data/reaches.bin
           test -s web/public/data/reaches.pmtiles
+          test -s web/public/data/names.json
 
       - uses: docker/login-action@v3
         with:

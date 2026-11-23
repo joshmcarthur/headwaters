@@ -47,10 +47,11 @@ Writes:
 
 - `web/public/data/reaches.bin` — packed national graph (`nzsegment`, immediate downstream `nzsegment`, `length_m`, interned names)
 - `web/public/data/reaches.pmtiles` — national MVT of `riverlines` with `LID = 0` (`nzsegment`, `StreamOrde`)
+- `web/public/data/names.json` — search index (one official name, longest stretch, outlet, bbox)
 
 CSV and other intermediates stay in `data/derived/` (gitignored). A Hutt-only GeoJSON clip still exists as `pipeline/src/headwaters_pipeline/clip.py` for local debug. Do not serve it.
 
-Both files are gitignored. Rebuild them locally before `npm run dev`. Do not commit them. Publish both together as GitHub Release tag `data` (see Deploy).
+These files are gitignored. Rebuild them locally before `npm run dev`. Do not commit them. Publish the graph, tiles, and name index together as GitHub Release tag `data` (see Deploy).
 
 ## Run the map
 
@@ -60,18 +61,18 @@ npm install
 npm run dev
 ```
 
-Open the URL Astro prints (usually http://localhost:4321/). The map opens on Aotearoa. Click any waterway.
+Open the URL Astro prints (usually http://localhost:4321/). The map opens on Aotearoa. Click any waterway, or search for one by name.
 
 ## Tests
 
 ```bash
 cd pipeline && python3 -m pytest tests -v
-cd web && node --experimental-strip-types --test src/lib/graph.test.ts src/lib/copy.test.ts src/lib/theme.test.ts src/lib/terrain-view.test.ts
+cd web && node --experimental-strip-types --test src/lib/graph.test.ts src/lib/copy.test.ts src/lib/theme.test.ts src/lib/search.test.ts
 ```
 
 ## Deploy
 
-The site is a static nginx image. GitHub Actions bakes `reaches.bin` and `reaches.pmtiles` into that image from a Release, then pushes GHCR.
+The site is a static nginx image. GitHub Actions bakes `reaches.bin`, `reaches.pmtiles`, and `names.json` into that image from a Release, then pushes GHCR.
 
 ### Data release
 
@@ -81,8 +82,9 @@ From a machine that has the rebuilt files (after the GitHub repo exists):
 gh release create data \
   web/public/data/reaches.bin \
   web/public/data/reaches.pmtiles \
+  web/public/data/names.json \
   --title "National river data" \
-  --notes "REC2 v5 graph and PMTiles. CC BY-NC 4.0. Rebuild with export_graph then pipeline/scripts/build_tiles.sh."
+  --notes "REC2 v5 graph, PMTiles, and name index. CC BY-NC 4.0. Rebuild with export_graph then pipeline/scripts/build_tiles.sh."
 ```
 
 After a graph or tile rebuild, upload both files so they stay in lockstep:
@@ -91,6 +93,7 @@ After a graph or tile rebuild, upload both files so they stay in lockstep:
 gh release upload data \
   web/public/data/reaches.bin \
   web/public/data/reaches.pmtiles \
+  web/public/data/names.json \
   --clobber
 ```
 
@@ -98,7 +101,7 @@ Then re-run the **Publish image** workflow (`workflow_dispatch` or a push to `ma
 
 ### Local image
 
-Needs the two data files on disk:
+Needs the graph, tiles, and name index on disk:
 
 ```bash
 docker compose build

@@ -1,6 +1,7 @@
 import { addProtocol, Map as MapLibreMap, removeProtocol } from "maplibre-gl";
 import { Protocol } from "pmtiles";
 import { copy, formatLength, splitOfficialName } from "../lib/copy.ts";
+import { mountRiverSearch, type RiverHit } from "../lib/search.ts";
 import { THEME_EVENT } from "../lib/theme.ts";
 import { HILLSHADE_EXAGGERATION, sceneView } from "../lib/terrain-view.ts";
 import {
@@ -136,6 +137,25 @@ function sourceToSeaDetails(): HTMLDetailsElement {
 
 function closeSourceToSea(): void {
   sourceToSeaDetails().open = false;
+}
+
+function frameRiver(map: MapLibreMap, bbox: RiverHit["bbox"]): void {
+  const padding = { top: 88, right: 48, bottom: 16, left: 48 };
+  const camera = map.cameraForBounds(
+    [
+      [bbox[0], bbox[1]],
+      [bbox[2], bbox[3]],
+    ],
+    { padding, maxZoom: 12, bearing: map.getBearing() },
+  );
+  map.easeTo({
+    center: camera?.center ?? [(bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2],
+    zoom: camera?.zoom ?? 11,
+    bearing: camera?.bearing ?? map.getBearing(),
+    pitch: map.getPitch(),
+    duration: 800,
+    essential: true,
+  });
 }
 
 function fillSourceToSea(runs: RouteRun[]): void {
@@ -556,6 +576,22 @@ export async function mountMap(): Promise<void> {
     if (historyMode === "push") recordHash(id);
   };
 
+  const searchInput = document.querySelector("#river-search");
+  const searchList = document.querySelector("#river-search-list");
+  const startList = document.querySelector("#start-rivers");
+  const riverSearch =
+    searchInput instanceof HTMLInputElement && searchList instanceof HTMLUListElement
+      ? mountRiverSearch({
+          input: searchInput,
+          list: searchList,
+          startList: startList instanceof HTMLElement ? startList : null,
+          onPick: (hit: RiverHit) => {
+            frameRiver(map, hit.bbox);
+            select(hit.id, "push");
+          },
+        })
+      : null;
+
   const applyHash = (): void => {
     if (!riversReady) return;
     const id = hashSegmentId(location.hash);
@@ -609,6 +645,7 @@ export async function mountMap(): Promise<void> {
   });
   window.addEventListener("keydown", (ev) => {
     if (ev.key !== "Escape") return;
+    if (riverSearch?.close()) return;
     if (sourceToSeaDetails().open) {
       closeSourceToSea();
       return;
