@@ -12,6 +12,10 @@ Binary layout (little-endian), file ``reaches.bin``:
 - ``named_count`` of ``nzsegment u32``, ``str_offset u32``
 - UTF-8 names, interned, null-terminated
 
+Also writes ``names.json``: one object per official name with the
+downstream ``nzsegment`` of the longest connected stretch, stretch length
+in metres, and a WGS84 bbox of member envelopes.
+
 ``NextDownID`` is the immediate next HydroID. This maps it to ``nzsegment``.
 Unmapped pointers are stored as that HydroID so the walker can raise a gap
 instead of inventing an edge.
@@ -23,6 +27,8 @@ Names come from the NIWA ``NZ River Names REC2 (Table)`` bulk CSV, joined on
 from __future__ import annotations
 
 import csv
+import json
+import re
 import struct
 import subprocess
 from pathlib import Path
@@ -37,6 +43,10 @@ VERSION = 2
 GAZETTEER_BY_RIVNAME = {
     "Hutt River": "Te Awa Kairangi / Hutt River",
 }
+
+WKT_NUMBER = re.compile(r"[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?")
+BBox = tuple[float, float, float, float]
+Stretch = dict[str, object]
 
 
 def repo_root() -> Path:
@@ -113,6 +123,144 @@ def load_names(csv_path: Path) -> dict[int, str]:
     return names
 
 
+def envelope_from_wkt(wkt: str) -> BBox | None:
+    nums = [float(part) for part in WKT_NUMBER.findall(wkt)]
+    if len(nums) < 2:
+        return None
+    lons = nums[0::2]
+    lats = nums[1::2]
+    if len(lons) != len(lats) or not lons:
+        return None
+    return (min(lons), min(lats), max(lons), max(lats))
+
+
+def union_bbox(left: BBox | None, right: BBox | None) -> BBox | None:
+    if left is None:
+        return right
+    if right is None:
+        return left
+    return (
+        min(left[0], right[0]),
+        min(left[1], right[1]),
+        max(left[2], right[2]),
+        max(left[3], right[3]),
+    )
+
+
+def load_envelopes(gdb: Path) -> dict[int, BBox]:
+    cmd = [
+        "ogr2ogr",
+        "-t_srs",
+        "EPSG:4326",
+        "-f",
+        "CSV",
+        "/vsistdout/",
+        str(gdb),
+        LAYER,
+        "-select",
+        "nzsegment",
+        "-lco",
+        "GEOMETRY=AS_WKT",
+        "-lco",
+        "SEPARATOR=COMMA",
+    ]
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, text=True)
+    assert proc.stdout is not None
+    envelopes: dict[int, BBox] = {}
+    reader = csv.DictReader(proc.stdout)
+    for rec in reader:
+        raw_id = rec.get("nzsegment")
+        if raw_id is None or raw_id == "":
+            continue
+        wkt = (
+            rec.get("WKT")
+            or rec.get("wkt")
+            or rec.get("Shape")
+            or rec.get("SHAPE")
+            or rec.get("geometry")
+            or ""
+        )
+        bbox = envelope_from_wkt(wkt)
+        if bbox is None:
+            continue
+        envelopes[int(float(raw_id))] = bbox
+    code = proc.wait()
+    if code != 0:
+        raise RuntimeError(f"ogr2ogr envelopes failed with exit {code}")
+    return envelopes
+
+
+def longest_stretches(
+    records: list[tuple[int, int, float]],
+    names: dict[int, str],
+    envelopes: dict[int, BBox],
+) -> list[Stretch]:
+    down = {nz: nxt for nz, nxt, _length in records}
+    length_of = {nz: length for nz, _nxt, length in records}
+    outlet_of: dict[int, int] = {}
+
+    def stretch_outlet(start: int) -> int:
+        cached = outlet_of.get(start)
+        if cached is not None:
+            return cached
+        label = names[start]
+        current = start
+        path: list[int] = []
+        seen: set[int] = set()
+        while current not in seen:
+            seen.add(current)
+            path.append(current)
+            nxt = down.get(current, 0)
+            if nxt == 0 or names.get(nxt) != label:
+                for node in path:
+                    outlet_of[node] = current
+                return current
+            current = nxt
+        for node in path:
+            outlet_of[node] = current
+        return current
+
+    groups: dict[tuple[str, int], tuple[float, BBox | None]] = {}
+    for nz, label in names.items():
+        if nz not in length_of:
+            continue
+        outlet = stretch_outlet(nz)
+        key = (label, outlet)
+        metres, bbox = groups.get(key, (0.0, None))
+        groups[key] = (metres + length_of[nz], union_bbox(bbox, envelopes.get(nz)))
+
+    best: dict[str, tuple[int, float, BBox | None]] = {}
+    for (label, outlet), (metres, bbox) in groups.items():
+        prev = best.get(label)
+        if prev is None:
+            better = True
+        else:
+            prev_id, prev_metres, _prev_bbox = prev
+            better = metres > prev_metres or (metres == prev_metres and outlet < prev_id)
+        if better:
+            best[label] = (outlet, metres, bbox)
+
+    rivers: list[Stretch] = []
+    for label, (outlet, metres, bbox) in best.items():
+        if bbox is None:
+            continue
+        rivers.append(
+            {
+                "name": label,
+                "id": outlet,
+                "metres": metres,
+                "bbox": [bbox[0], bbox[1], bbox[2], bbox[3]],
+            }
+        )
+    return sorted(rivers, key=lambda row: (str(row["name"]), int(row["id"])))
+
+
+def write_names_json(path: Path, rivers: list[Stretch]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as fh:
+        json.dump(rivers, fh, ensure_ascii=False, separators=(",", ":"))
+
+
 def write_binary(
     path: Path,
     records: list[tuple[int, int, float]],
@@ -160,6 +308,7 @@ def main() -> None:
     derived = root / "data" / "derived"
     csv_path = derived / "riverlines.csv"
     out_bin = root / "web" / "public" / "data" / "reaches.bin"
+    out_names = root / "web" / "public" / "data" / "names.json"
     if not gdb.exists():
         raise SystemExit(f"Missing {gdb}. See README.md.")
     if not names_csv.exists():
@@ -173,8 +322,13 @@ def main() -> None:
     records = records_from_rows(rows)
     names = load_names(names_csv)
     print(f"Named reaches: {len(names)}")
+    print("Reading reach envelopes…")
+    envelopes = load_envelopes(gdb)
+    rivers = longest_stretches(records, names, envelopes)
     write_binary(out_bin, records, names)
+    write_names_json(out_names, rivers)
     print(f"Wrote {out_bin} ({out_bin.stat().st_size} bytes, {len(records)} reaches)")
+    print(f"Wrote {out_names} ({len(rivers)} named rivers)")
 
 
 if __name__ == "__main__":

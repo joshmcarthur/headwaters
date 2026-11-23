@@ -5,7 +5,7 @@ import { copy, splitOfficialName } from "./copy.ts";
 test("empty-state copy has no we'll", () => {
   assert.equal(
     copy.empty,
-    "Click a waterway on the map to highlight the pathway and connected network.",
+    "Click a waterway on the map, or search for one by name.",
   );
   assert.equal(copy.empty.includes("we'll"), false);
   assert.equal(copy.empty.includes("We'll"), false);
@@ -39,6 +39,16 @@ test("3D control is a short pressed label", () => {
   assert.equal(copy.terrainToggle, "3D");
   assert.equal(copy.terrainLabel, "3D terrain");
   assert.equal(copy.attributionTerrain, "Terrain: Mapterhorn");
+});
+
+test("search copy names the field and the empty list", () => {
+  assert.equal(copy.searchLabel, "Search for a river or stream");
+  assert.equal(copy.searchNone, "We can't find a river with that name yet.");
+  assert.equal(
+    copy.searchIndexFailed,
+    "River names didn't load. You can still click a waterway on the map.",
+  );
+  assert.equal(copy.startList, "Some rivers to start with");
 });
 
 test("theme control names the action, not the token themes", () => {

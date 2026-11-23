@@ -29,6 +29,7 @@ No `RivName` on `riverlines` or any other table in `nzRec2_v5.gdb`. Names are a 
 | --- | --- |
 | `web/public/data/reaches.pmtiles` | Map geometry. ~90 MB tippecanoe MVT of `riverlines` with `LID = 0`, WGS84, z4–13. Feature id / property `nzsegment`. Also `StreamOrde`. In-lake REC2 chords (`LID > 0`) stay in the graph but are not drawn. Gitignored. Publish with the graph in GitHub Release tag `data`. |
 | `web/public/data/reaches.bin` | Compact graph. Magic `HWG1` v2: `nzsegment u32`, downstream `nzsegment u32` (0 = sink), `length_m f32`, then interned UTF-8 names. Reverse `up` index is built in the browser. 11,331 sinks. No unmapped `down` pointers in v5. Gitignored. Publish with the tiles in GitHub Release tag `data`. |
+| `web/public/data/names.json` | Search index. One row per official name: longest connected stretch, outlet `nzsegment`, stretch length in metres, WGS84 bbox of member envelopes. Gitignored. Publish with the graph and tiles in GitHub Release tag `data`. |
 
 Rebuild: `PYTHONPATH=pipeline/src python3 -m headwaters_pipeline.export_graph` then `bash pipeline/scripts/build_tiles.sh`.
 
@@ -51,7 +52,7 @@ Do not page the FeatureServer. Hub CSV is the archive.
 
 `RivName` is unofficial topo naming. Gazetteer wins where we have a documented overlay. Gazette 2011-ln7607: exact `RivName` **Hutt River** becomes **Te Awa Kairangi / Hutt River**. Eastern Hutt River and Western Hutt River are unchanged. Do not invent Māori names.
 
-Packed names live in `reaches.bin` (HWG1 v2 string table). Unnamed stays unnamed.
+Packed names live in `reaches.bin` (HWG1 v2 string table). Unnamed stays unnamed. Search uses `names.json`, rebuilt by the same `export_graph` run. One result per official name: the longest connected stretch. Shorter waterways that share a spelling are omitted. A stretch with no envelope is omitted because the map cannot fly to it.
 
 ## Not in this extract
 

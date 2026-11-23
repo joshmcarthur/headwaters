@@ -12,6 +12,7 @@ web/public/data/*-graph.json
 # Generated runtime data. Publish via GitHub Release tag `data`.
 web/public/data/*.bin
 web/public/data/*.pmtiles
+web/public/data/names.json
 
 # Python
 __pycache__/

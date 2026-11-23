@@ -4,8 +4,11 @@ export const copy = {
   title: "Headwaters",
   subtitle: "Ki uta ki tai: from the mountains to the sea.",
   emptyTitle: "Pick a waterway",
-  empty:
-    "Click a waterway on the map to highlight the pathway and connected network.",
+  empty: "Click a waterway on the map, or search for one by name.",
+  searchLabel: "Search for a river or stream",
+  searchNone: "We can't find a river with that name yet.",
+  searchIndexFailed: "River names didn't load. You can still click a waterway on the map.",
+  startList: "Some rivers to start with",
   loading: "Tracing the network…",
   dataMissing: "The river data didn't load. Check your connection and try again.",
   gap: "We can't trace this stream any further. There's a gap in the mapped river network.",
