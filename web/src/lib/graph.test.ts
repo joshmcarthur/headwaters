@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  collapseRoute,
   connectedNetwork,
   encodeCompact,
   furthestSource,
@@ -8,6 +9,7 @@ import {
   loadCompactGraph,
   maxPathLength,
   riverGraphView,
+  tapHighlights,
   walkDownstream,
   walkUpstream,
   type RiverGraph,
@@ -88,4 +90,80 @@ test("compact graph interned names round-trip", () => {
   assert.equal(compact.name(1), "Te Awa Kairangi / Hutt River");
   assert.equal(compact.name(2), "Te Awa Kairangi / Hutt River");
   assert.equal(compact.name(3), null);
+});
+
+test("tap highlights keep catchment, longest upstream, and downstream distinct", () => {
+  const marks = tapHighlights(view, "B");
+  assert.equal(marks.selected, "B");
+  assert.deepEqual(marks.downstream, ["C"]);
+  assert.deepEqual(marks.main, ["A"]);
+  assert.deepEqual(new Set(marks.catchment), new Set(["A", "D"]));
+});
+
+const named: RiverGraph = {
+  outlet_nzsegment: 0,
+  sink_nextdownid: 0,
+  segments: {
+    A: { down: "B", length_m: 100, up: [], official_name: "Headwaters Stream" },
+    B: { down: "C", length_m: 200, up: ["A"], official_name: "Headwaters Stream" },
+    C: { down: "D", length_m: 50, up: ["B"], official_name: null },
+    D: {
+      down: "E",
+      length_m: 300,
+      up: ["C"],
+      official_name: "Te Awa Kairangi / Hutt River",
+    },
+    E: {
+      down: "F",
+      length_m: 100,
+      up: ["D"],
+      official_name: "Te Awa Kairangi / Hutt River",
+    },
+    F: { down: "G", length_m: 20, up: ["E"], official_name: null },
+    G: {
+      down: 0,
+      length_m: 80,
+      up: ["F"],
+      official_name: "Te Awa Kairangi / Hutt River",
+    },
+  },
+};
+
+const namedView = riverGraphView(named);
+const namedPath = ["A", "B", "C", "D", "E", "F", "G"];
+
+test("collapseRoute merges consecutive names and sums lengths", () => {
+  const runs = collapseRoute(namedView, namedPath, "D");
+  assert.deepEqual(runs, [
+    { name: "Headwaters Stream", metres: 300, containsSelected: false },
+    { name: null, metres: 50, containsSelected: false },
+    {
+      name: "Te Awa Kairangi / Hutt River",
+      metres: 400,
+      containsSelected: true,
+    },
+    { name: null, metres: 20, containsSelected: false },
+    {
+      name: "Te Awa Kairangi / Hutt River",
+      metres: 80,
+      containsSelected: false,
+    },
+  ]);
+});
+
+test("collapseRoute flags the unnamed run when it contains the selected reach", () => {
+  const runs = collapseRoute(namedView, namedPath, "C");
+  assert.equal(runs[1]?.name, null);
+  assert.equal(runs[1]?.containsSelected, true);
+  assert.equal(runs.filter((r) => r.containsSelected).length, 1);
+});
+
+test("collapseRoute on the longest path matches maxPathLength", () => {
+  const { path } = maxPathLength(namedView, "D");
+  assert.deepEqual(path, namedPath);
+  const runs = collapseRoute(namedView, path, "D");
+  assert.equal(
+    runs.reduce((sum, r) => sum + r.metres, 0),
+    850,
+  );
 });

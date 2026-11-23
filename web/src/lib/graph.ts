@@ -326,3 +326,53 @@ export function maxPathLength(
   const path = fromSource.slice(0, i + 1).concat(downPath.slice(1));
   return { source, path, metres: distToStart + downLen };
 }
+
+export type RouteRun = {
+  name: string | null;
+  metres: number;
+  containsSelected: boolean;
+};
+
+export function collapseRoute(
+  graph: GraphView,
+  path: SegmentId[],
+  selected: SegmentId,
+): RouteRun[] {
+  const runs: RouteRun[] = [];
+  const selectedKey = String(selected);
+  for (const id of path) {
+    const name = graph.name(id);
+    const metres = graph.length(id);
+    const selectedHere = String(id) === selectedKey;
+    const last = runs[runs.length - 1];
+    if (last && last.name === name) {
+      last.metres += metres;
+      last.containsSelected = last.containsSelected || selectedHere;
+    } else {
+      runs.push({ name, metres, containsSelected: selectedHere });
+    }
+  }
+  return runs;
+}
+
+export type TapHighlights = {
+  selected: SegmentId;
+  downstream: SegmentId[];
+  main: SegmentId[];
+  catchment: SegmentId[];
+};
+
+export function tapHighlights(graph: GraphView, start: SegmentId): TapHighlights {
+  const up = walkUpstream(graph, start);
+  const down = walkDownstream(graph, start);
+  const { node: source } = furthestSource(graph, start);
+  const fromSource = walkDownstream(graph, source);
+  const i = fromSource.findIndex((id) => String(id) === String(start));
+  if (i < 0) throw new GapError(source, start);
+  return {
+    selected: start,
+    downstream: down.slice(1),
+    main: fromSource.slice(0, i),
+    catchment: up.filter((id) => String(id) !== String(start)),
+  };
+}
