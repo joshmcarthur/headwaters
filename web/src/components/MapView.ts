@@ -2,6 +2,7 @@ import { addProtocol, Map as MapLibreMap, removeProtocol } from "maplibre-gl";
 import { Protocol } from "pmtiles";
 import { copy, formatLength, splitOfficialName } from "../lib/copy.ts";
 import { THEME_EVENT } from "../lib/theme.ts";
+import { HILLSHADE_EXAGGERATION, sceneView } from "../lib/terrain-view.ts";
 import {
   GapError,
   collapseRoute,
@@ -16,6 +17,8 @@ import {
 const TAP_PAD = 10;
 const SOURCE_LAYER = "reaches";
 const MOBILE_MQ = "(max-width: 720px)";
+const MAPTERHORN_TILEJSON = "https://tiles.mapterhorn.com/tilejson.json";
+const CONTEXT_RIVER_LAYER = "reaches";
 const NZ_BOUNDS: [[number, number], [number, number]] = [
   [166.0, -47.5],
   [178.9, -34.0],
@@ -243,6 +246,7 @@ export async function mountMap(): Promise<void> {
     renderWorldCopies: false,
     minZoom: 4,
     maxZoom: 14,
+    maxPitch: 70,
     style: {
       version: 8,
       sources: {},
@@ -266,10 +270,30 @@ export async function mountMap(): Promise<void> {
     console.error(ev.error || ev);
   });
 
+  let terrainOn = false;
   let riversReady = false;
 
   const addRivers = (): void => {
     if (map.getSource("reaches")) return;
+    map.addSource("terrain", {
+      type: "raster-dem",
+      url: MAPTERHORN_TILEJSON,
+      encoding: "terrarium",
+      tileSize: 512,
+    });
+    map.addSource("hillshade", {
+      type: "raster-dem",
+      url: MAPTERHORN_TILEJSON,
+      encoding: "terrarium",
+      tileSize: 512,
+    });
+    map.addLayer({
+      id: "hillshade",
+      type: "hillshade",
+      source: "hillshade",
+      layout: { visibility: "none" },
+      paint: { "hillshade-exaggeration": HILLSHADE_EXAGGERATION },
+    });
     map.addSource("reaches", {
       type: "vector",
       tiles: [`${tilesUrl}/{z}/{x}/{y}`],
@@ -454,6 +478,24 @@ export async function mountMap(): Promise<void> {
     map.setPaintProperty("reaches", "line-opacity", on ? paint.opacityContext : 1);
   };
 
+  const applyScene = (): void => {
+    const view = sceneView({ terrain: terrainOn });
+    map.setTerrain(view.terrain);
+    if (map.getLayer("hillshade")) {
+      map.setLayoutProperty("hillshade", "visibility", view.hillshade);
+    }
+    if (map.getLayer(CONTEXT_RIVER_LAYER)) {
+      map.setLayoutProperty(
+        CONTEXT_RIVER_LAYER,
+        "visibility",
+        view.rivers === "all" ? "visible" : "none",
+      );
+    }
+    const btn = document.getElementById("terrain-toggle");
+    btn?.setAttribute("aria-pressed", terrainOn ? "true" : "false");
+    map.easeTo({ pitch: view.pitch });
+  };
+
   const paintClear = (): void => {
     for (const sid of painted) {
       map.setFeatureState(stateRef(sid), {
@@ -535,8 +577,7 @@ export async function mountMap(): Promise<void> {
         Number(b.properties?.StreamOrde ?? 0) - Number(a.properties?.StreamOrde ?? 0),
     );
     const hit = hits[0];
-    const raw = hit ? (hit.id ?? hit.properties?.nzsegment) : null;
-    const id = featureId(raw);
+    const id = featureId(hit ? (hit.id ?? hit.properties?.nzsegment) : null);
     if (id == null) {
       clear("push");
       return;
@@ -560,7 +601,11 @@ export async function mountMap(): Promise<void> {
     map.zoomOut();
   });
   el("reset-north").addEventListener("click", () => {
-    map.easeTo({ bearing: 0, pitch: 0 });
+    map.easeTo({ bearing: 0, pitch: terrainOn ? map.getPitch() : 0 });
+  });
+  el("terrain-toggle").addEventListener("click", () => {
+    terrainOn = !terrainOn;
+    applyScene();
   });
   window.addEventListener("keydown", (ev) => {
     if (ev.key !== "Escape") return;

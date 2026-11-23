@@ -66,7 +66,7 @@ Open the URL Astro prints (usually http://localhost:4321/). The map opens on Aot
 
 ```bash
 cd pipeline && python3 -m pytest tests -v
-cd web && node --experimental-strip-types --test src/lib/graph.test.ts src/lib/copy.test.ts src/lib/theme.test.ts
+cd web && node --experimental-strip-types --test src/lib/graph.test.ts src/lib/copy.test.ts src/lib/theme.test.ts src/lib/terrain-view.test.ts
 ```
 
 ## Deploy

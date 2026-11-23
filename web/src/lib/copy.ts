@@ -20,6 +20,9 @@ export const copy = {
   zoomIn: "Zoom in",
   zoomOut: "Zoom out",
   resetNorth: "Reset north",
+  terrainToggle: "3D",
+  terrainLabel: "3D terrain",
+  attributionTerrain: "Terrain: Mapterhorn",
   clear: "Clear selection",
   themeSwitch: "Switch colour scheme",
 };

@@ -35,6 +35,12 @@ test("source-to-sea label is sentence case, not Routing", () => {
   assert.equal(copy.fromSourceToSea.includes("Routing"), false);
 });
 
+test("3D control is a short pressed label", () => {
+  assert.equal(copy.terrainToggle, "3D");
+  assert.equal(copy.terrainLabel, "3D terrain");
+  assert.equal(copy.attributionTerrain, "Terrain: Mapterhorn");
+});
+
 test("theme control names the action, not the token themes", () => {
   assert.equal(copy.themeSwitch, "Switch colour scheme");
   assert.equal("themePrefSystem" in copy, false);
