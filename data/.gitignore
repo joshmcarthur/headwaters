@@ -1,0 +1,11 @@
+# Nationwide source downloads stay on disk, not in git.
+raw/
+derived/
+*.gdb/
+*.zip
+*.parquet
+*.gpkg
+*.shp
+*.shx
+*.dbf
+*.prj

@@ -1,0 +1,40 @@
+# REC2 and other nationwide extracts
+data/raw/
+data/derived/
+*.gdb/
+*.gdb.zip
+*.mbtiles
+*.geojsons
+
+# Local debug geometry — never the product format
+web/public/data/*.geojson
+web/public/data/*-graph.json
+# Generated runtime data. Publish via GitHub Release tag `data`.
+web/public/data/*.bin
+web/public/data/*.pmtiles
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+pipeline/.venv/
+.venv/
+
+# Node
+node_modules/
+web/dist/
+web/.astro/
+dist/
+.astro/
+
+# Local env
+.env
+.env.local
+web/.env
+web/.env.local
+
+.DS_Store
+
+# Local notes and design-export output
+tmp/
+design/dist/
