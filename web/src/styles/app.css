@@ -25,9 +25,55 @@ html[data-theme="dusk"] {
   flex: none;
 }
 
+.hw-mast {
+  flex-wrap: wrap;
+}
+
+.hw-mast .hw-search {
+  flex: 1 1 16rem;
+  max-width: 28rem;
+  min-width: 12rem;
+}
+
+.hw-mast .hw-search__list[hidden] {
+  display: none;
+}
+
+.hw-start {
+  margin-top: var(--space-4, 16px);
+}
+
+.hw-start h3 {
+  margin: 0 0 var(--space-2, 8px);
+  font: 600 14px/20px var(--font-sans);
+  color: var(--ink-muted);
+}
+
+.hw-start ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1, 4px);
+}
+
+.hw-start .hw-btn {
+  padding-inline: 0;
+  min-height: var(--control-sm, 32px);
+  justify-content: flex-start;
+}
+
 @media (max-width: 640px) {
   .hw-mast__tag {
     display: none;
+  }
+
+  .hw-mast .hw-search {
+    flex: 1 1 100%;
+    max-width: none;
+    order: 3;
   }
 }
 

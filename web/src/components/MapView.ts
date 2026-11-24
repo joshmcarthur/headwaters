@@ -1,6 +1,7 @@
 import { addProtocol, Map as MapLibreMap, removeProtocol } from "maplibre-gl";
 import { Protocol } from "pmtiles";
 import { copy, formatLength, splitOfficialName } from "../lib/copy.ts";
+import { mountRiverSearch, type RiverHit } from "../lib/search.ts";
 import { THEME_EVENT } from "../lib/theme.ts";
 import { HILLSHADE_EXAGGERATION, sceneView } from "../lib/terrain-view.ts";
 import {
@@ -136,6 +137,93 @@ function sourceToSeaDetails(): HTMLDetailsElement {
 
 function closeSourceToSea(): void {
   sourceToSeaDetails().open = false;
+}
+
+type LngLatBbox = [number, number, number, number];
+
+const SEARCH_PAD = { top: 88, right: 48, bottom: 16, left: 48 };
+
+function extendBbox(acc: LngLatBbox | null, lon: number, lat: number): LngLatBbox | null {
+  if (!Number.isFinite(lon) || !Number.isFinite(lat)) return acc;
+  if (!acc) return [lon, lat, lon, lat];
+  return [
+    Math.min(acc[0], lon),
+    Math.min(acc[1], lat),
+    Math.max(acc[2], lon),
+    Math.max(acc[3], lat),
+  ];
+}
+
+function extendBboxFromCoords(acc: LngLatBbox | null, coords: unknown): LngLatBbox | null {
+  if (!Array.isArray(coords) || coords.length === 0) return acc;
+  if (typeof coords[0] === "number") {
+    return extendBbox(acc, coords[0] as number, coords[1] as number);
+  }
+  let next = acc;
+  for (const part of coords) next = extendBboxFromCoords(next, part);
+  return next;
+}
+
+function bboxFromPathway(map: MapLibreMap, ids: number[]): LngLatBbox | null {
+  if (ids.length === 0 || !map.getSource("reaches")) return null;
+  const want = new Set(ids);
+  const features = map.querySourceFeatures("reaches", { sourceLayer: SOURCE_LAYER });
+  let bbox: LngLatBbox | null = null;
+  for (const feature of features) {
+    const raw = feature.id ?? feature.properties?.nzsegment;
+    if (raw == null || !want.has(Number(raw))) continue;
+    const geom = feature.geometry;
+    if (!geom || !("coordinates" in geom)) continue;
+    bbox = extendBboxFromCoords(bbox, geom.coordinates);
+  }
+  return bbox;
+}
+
+function frameRiver(map: MapLibreMap, bbox: LngLatBbox, duration = 800): void {
+  const camera = map.cameraForBounds(
+    [
+      [bbox[0], bbox[1]],
+      [bbox[2], bbox[3]],
+    ],
+    { padding: SEARCH_PAD, maxZoom: 12, bearing: map.getBearing() },
+  );
+  map.easeTo({
+    center: camera?.center ?? [(bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2],
+    zoom: camera?.zoom ?? 11,
+    bearing: camera?.bearing ?? map.getBearing(),
+    pitch: map.getPitch(),
+    duration,
+    essential: true,
+  });
+}
+
+function bboxGrows(next: LngLatBbox, prev: LngLatBbox): boolean {
+  return (
+    next[0] < prev[0] - 1e-4 ||
+    next[1] < prev[1] - 1e-4 ||
+    next[2] > prev[2] + 1e-4 ||
+    next[3] > prev[3] + 1e-4
+  );
+}
+
+function framePathway(
+  map: MapLibreMap,
+  ids: number[],
+  fallback: LngLatBbox,
+  gen: number,
+  currentGen: () => number,
+): void {
+  const fit = (bbox: LngLatBbox, duration: number, left: number): void => {
+    if (gen !== currentGen()) return;
+    frameRiver(map, bbox, duration);
+    if (left <= 0) return;
+    map.once("idle", () => {
+      if (gen !== currentGen()) return;
+      const loaded = bboxFromPathway(map, ids);
+      if (loaded && bboxGrows(loaded, bbox)) fit(loaded, 600, left - 1);
+    });
+  };
+  fit(bboxFromPathway(map, ids) ?? fallback, 800, 5);
 }
 
 function fillSourceToSea(runs: RouteRun[]): void {
@@ -466,6 +554,7 @@ export async function mountMap(): Promise<void> {
   });
 
   let painted: number[] = [];
+  let frameGen = 0;
 
   const stateRef = (id: number) => ({
     source: "reaches",
@@ -556,6 +645,30 @@ export async function mountMap(): Promise<void> {
     if (historyMode === "push") recordHash(id);
   };
 
+  const searchInput = document.querySelector("#river-search");
+  const searchList = document.querySelector("#river-search-list");
+  const startList = document.querySelector("#start-rivers");
+  const riverSearch =
+    searchInput instanceof HTMLInputElement && searchList instanceof HTMLUListElement
+      ? mountRiverSearch({
+          input: searchInput,
+          list: searchList,
+          startList: startList instanceof HTMLElement ? startList : null,
+          onPick: (hit: RiverHit) => {
+            select(hit.id, "push");
+            const gen = ++frameGen;
+            const ids = painted.slice();
+            const fallback = hit.bbox;
+            const start = (): void => {
+              if (gen !== frameGen) return;
+              map.stop();
+              framePathway(map, ids, fallback, gen, () => frameGen);
+            };
+            requestAnimationFrame(() => requestAnimationFrame(start));
+          },
+        })
+      : null;
+
   const applyHash = (): void => {
     if (!riversReady) return;
     const id = hashSegmentId(location.hash);
@@ -609,6 +722,7 @@ export async function mountMap(): Promise<void> {
   });
   window.addEventListener("keydown", (ev) => {
     if (ev.key !== "Escape") return;
+    if (riverSearch?.close()) return;
     if (sourceToSeaDetails().open) {
       closeSourceToSea();
       return;

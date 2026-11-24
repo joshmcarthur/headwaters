@@ -47,6 +47,37 @@ import { copy } from "../lib/copy";
             <a class="hw-mast__name" href="/">{copy.title}</a>
             <p class="hw-mast__tag">{copy.subtitle}</p>
           </div>
+          <div class="hw-search" role="search">
+            <div class="hw-search__box">
+              <svg
+                class="hw-icon"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.75"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <circle cx="11" cy="11" r="7"></circle>
+                <path d="M20 20l-4-4"></path>
+              </svg>
+              <input
+                id="river-search"
+                type="text"
+                role="combobox"
+                autocomplete="off"
+                aria-autocomplete="list"
+                aria-expanded="false"
+                aria-controls="river-search-list"
+                aria-label={copy.searchLabel}
+                placeholder={copy.searchLabel}
+              />
+            </div>
+            <ul class="hw-search__list" id="river-search-list" role="listbox" hidden></ul>
+          </div>
           <button
             class="hw-iconbtn"
             id="theme-cycle"
@@ -96,6 +127,10 @@ import { copy } from "../lib/copy";
           <div class="hw-empty" style="border: 0; padding: 0; text-align: left; background: transparent">
             <h2>{copy.emptyTitle}</h2>
             <p>{copy.empty}</p>
+            <div class="hw-start">
+              <h3>{copy.startList}</h3>
+              <ul id="start-rivers"></ul>
+            </div>
           </div>
         </section>
 
