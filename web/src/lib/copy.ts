@@ -27,6 +27,7 @@ export const copy = {
   terrainLabel: "3D terrain",
   attributionTerrain: "Terrain: Mapterhorn",
   clear: "Clear selection",
+  back: "Back",
   themeSwitch: "Switch colour scheme",
 };
 

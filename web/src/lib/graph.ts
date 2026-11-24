@@ -328,6 +328,7 @@ export function maxPathLength(
 }
 
 export type RouteRun = {
+  id: SegmentId;
   name: string | null;
   metres: number;
   containsSelected: boolean;
@@ -346,10 +347,11 @@ export function collapseRoute(
     const selectedHere = String(id) === selectedKey;
     const last = runs[runs.length - 1];
     if (last && last.name === name) {
+      last.id = id;
       last.metres += metres;
       last.containsSelected = last.containsSelected || selectedHere;
     } else {
-      runs.push({ name, metres, containsSelected: selectedHere });
+      runs.push({ id, name, metres, containsSelected: selectedHere });
     }
   }
   return runs;

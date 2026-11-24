@@ -137,8 +137,13 @@ import { copy } from "../lib/copy";
         <section id="river-panel" class="hw-panel" hidden aria-live="polite">
           <div>
             <h1 class="hw-place heading-3">
-              <span id="place-maori"></span>
-              <small id="place-english" hidden></small>
+              <button type="button" class="hw-back" id="river-back" aria-label={copy.back}>
+                ←
+              </button>
+              <span class="hw-place__names">
+                <span id="place-maori"></span>
+                <small id="place-english" hidden></small>
+              </span>
             </h1>
             <p id="river-summary" class="body-sm" hidden></p>
           </div>

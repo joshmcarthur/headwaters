@@ -119,7 +119,19 @@ function featureId(raw: unknown): number | null {
   return null;
 }
 
-type HistoryMode = "push" | "none";
+type HistoryMode = "push" | "none" | "replace";
+
+type HwHistory = { hw: true; depth: number };
+
+function isHwHistory(value: unknown): value is HwHistory {
+  if (value == null || typeof value !== "object") return false;
+  const row = value as Record<string, unknown>;
+  return row.hw === true && typeof row.depth === "number";
+}
+
+function hwDepth(): number {
+  return isHwHistory(history.state) ? history.state.depth : 0;
+}
 
 function hashSegmentId(hash: string): number | null {
   if (!hash.startsWith("#") || hash.length < 2) return null;
@@ -235,7 +247,10 @@ function fillSourceToSea(runs: RouteRun[]): void {
       tr.setAttribute("aria-current", "location");
     }
     const nameCell = document.createElement("td");
-    nameCell.textContent = run.name ?? copy.unnamed;
+    const link = document.createElement("a");
+    link.href = `#${run.id}`;
+    link.textContent = run.name ?? copy.unnamed;
+    nameCell.append(link);
     const lengthCell = document.createElement("td");
     lengthCell.className = "hw-num";
     const formatted = formatLength(run.metres);
@@ -256,12 +271,11 @@ function updatePanel(graph: GraphView, id: SegmentId | null, gap: boolean): void
   const gapNote = el("gap-note");
   const disc = sourceToSeaDetails();
 
-  closeSourceToSea();
-
   if (!id) {
     empty.hidden = false;
     selected.hidden = true;
     disc.hidden = true;
+    disc.open = false;
     fillSourceToSea([]);
     return;
   }
@@ -598,17 +612,38 @@ export async function mountMap(): Promise<void> {
     setContextDim(false);
   };
 
-  const recordHash = (id: number | null): void => {
+  const recordHash = (id: number | null, mode: "push" | "replace"): void => {
     const next = urlForSegment(id);
     const current = `${location.pathname}${location.search}${location.hash}`;
+    if (mode === "replace") {
+      history.replaceState({ hw: true, depth: hwDepth() }, "", next);
+      return;
+    }
     if (current === next) return;
-    history.pushState(null, "", next);
+    history.pushState({ hw: true, depth: hwDepth() + 1 }, "", next);
   };
 
   const clear = (historyMode: HistoryMode): void => {
     paintClear();
     updatePanel(graph, null, false);
-    if (historyMode === "push") recordHash(null);
+    if (historyMode === "push") recordHash(null, "push");
+    if (historyMode === "replace") recordHash(null, "replace");
+  };
+
+  const viewBbox = (): LngLatBbox => {
+    const bounds = map.getBounds();
+    return [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()];
+  };
+
+  const zoomToPainted = (): void => {
+    const gen = ++frameGen;
+    const ids = painted.slice();
+    const start = (): void => {
+      if (gen !== frameGen) return;
+      map.stop();
+      framePathway(map, ids, bboxFromPathway(map, ids) ?? viewBbox(), gen, () => frameGen);
+    };
+    requestAnimationFrame(() => requestAnimationFrame(start));
   };
 
   const select = (id: number, historyMode: HistoryMode): void => {
@@ -642,7 +677,8 @@ export async function mountMap(): Promise<void> {
     }
     setContextDim(true);
     updatePanel(graph, id, gap);
-    if (historyMode === "push") recordHash(id);
+    if (historyMode === "push") recordHash(id, "push");
+    if (historyMode === "replace") recordHash(id, "replace");
   };
 
   const searchInput = document.querySelector("#river-search");
@@ -729,7 +765,28 @@ export async function mountMap(): Promise<void> {
     }
     clear("push");
   });
+  el("source-to-sea-body").addEventListener("click", (ev) => {
+    const target = ev.target;
+    if (!(target instanceof Element)) return;
+    const link = target.closest("a[href^='#']");
+    if (!(link instanceof HTMLAnchorElement)) return;
+    ev.preventDefault();
+    const id = hashSegmentId(link.hash);
+    if (id == null) return;
+    select(id, "push");
+    sourceToSeaDetails().open = true;
+    zoomToPainted();
+  });
+  el("river-back").addEventListener("click", () => {
+    if (hwDepth() > 0) {
+      history.back();
+      return;
+    }
+    clear("replace");
+  });
+  window.addEventListener("popstate", applyHash);
   window.addEventListener("hashchange", applyHash);
+  history.replaceState({ hw: true, depth: 0 }, "", `${location.pathname}${location.search}${location.hash}`);
   if (riversReady) applyHash();
   else map.on("load", applyHash);
   window.addEventListener(THEME_EVENT, () => {

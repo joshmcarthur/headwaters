@@ -41,6 +41,10 @@ test("3D control is a short pressed label", () => {
   assert.equal(copy.attributionTerrain, "Terrain: Mapterhorn");
 });
 
+test("back control is a short label", () => {
+  assert.equal(copy.back, "Back");
+});
+
 test("search copy names the field and the empty list", () => {
   assert.equal(copy.searchLabel, "Search for a river or stream");
   assert.equal(copy.searchNone, "We can't find a river with that name yet.");
