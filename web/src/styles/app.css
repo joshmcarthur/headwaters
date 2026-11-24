@@ -189,6 +189,39 @@ html[data-theme="dusk"] {
   display: none;
 }
 
+#river-panel .hw-place {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2, 8px);
+}
+
+.hw-back {
+  flex: none;
+  margin: 0;
+  margin-top: 0.12em;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  line-height: 1;
+}
+
+.hw-place__names {
+  min-width: 0;
+}
+
+#source-to-sea-body a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+#source-to-sea-body a:hover {
+  color: var(--link, #1f4e5a);
+}
+
 /* RiverPanel renders name + optional summary as one block, then stats.
    Without a summary the empty paragraph and default <p> margin left a
    vacant band under the title. */

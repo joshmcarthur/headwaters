@@ -135,15 +135,17 @@ const namedPath = ["A", "B", "C", "D", "E", "F", "G"];
 test("collapseRoute merges consecutive names and sums lengths", () => {
   const runs = collapseRoute(namedView, namedPath, "D");
   assert.deepEqual(runs, [
-    { name: "Headwaters Stream", metres: 300, containsSelected: false },
-    { name: null, metres: 50, containsSelected: false },
+    { id: "B", name: "Headwaters Stream", metres: 300, containsSelected: false },
+    { id: "C", name: null, metres: 50, containsSelected: false },
     {
+      id: "E",
       name: "Te Awa Kairangi / Hutt River",
       metres: 400,
       containsSelected: true,
     },
-    { name: null, metres: 20, containsSelected: false },
+    { id: "F", name: null, metres: 20, containsSelected: false },
     {
+      id: "G",
       name: "Te Awa Kairangi / Hutt River",
       metres: 80,
       containsSelected: false,
@@ -154,6 +156,7 @@ test("collapseRoute merges consecutive names and sums lengths", () => {
 test("collapseRoute flags the unnamed run when it contains the selected reach", () => {
   const runs = collapseRoute(namedView, namedPath, "C");
   assert.equal(runs[1]?.name, null);
+  assert.equal(runs[1]?.id, "C");
   assert.equal(runs[1]?.containsSelected, true);
   assert.equal(runs.filter((r) => r.containsSelected).length, 1);
 });
