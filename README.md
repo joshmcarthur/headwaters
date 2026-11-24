@@ -65,9 +65,11 @@ Open the URL Astro prints (usually http://localhost:4321/). The map opens on Aot
 
 ## Tests
 
+GitHub Actions runs these on pull requests and on pushes to `main`.
+
 ```bash
 cd pipeline && python3 -m pytest tests -v
-cd web && node --experimental-strip-types --test src/lib/graph.test.ts src/lib/copy.test.ts src/lib/theme.test.ts src/lib/search.test.ts
+cd web && npm test
 ```
 
 ## Deploy
