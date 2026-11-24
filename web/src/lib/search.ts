@@ -65,6 +65,17 @@ export function searchRivers(
   return ranked.slice(0, limit).map((row) => row.river);
 }
 
+export function hitForQuery(
+  rivers: RiverHit[],
+  query: string,
+  active = 0,
+): RiverHit | null {
+  const rows = searchRivers(rivers, query);
+  if (rows.length === 0) return null;
+  const i = Math.max(0, Math.min(active, rows.length - 1));
+  return rows[i] ?? null;
+}
+
 export function resolveNames(
   rivers: RiverHit[],
   names: readonly string[],
@@ -221,6 +232,7 @@ export function mountRiverSearch(opts: {
   opts.input.addEventListener("input", runQuery);
   opts.input.addEventListener("focus", runQuery);
   opts.input.addEventListener("keydown", (ev) => {
+    if (ev.isComposing) return;
     if (ev.key === "ArrowDown") {
       if (!open) return;
       ev.preventDefault();
@@ -236,9 +248,10 @@ export function mountRiverSearch(opts: {
       return;
     }
     if (ev.key === "Enter") {
-      if (!open || !hits[active]) return;
       ev.preventDefault();
-      pick(hits[active]);
+      const hit = hitForQuery(rivers, opts.input.value, active);
+      if (hit) pick(hit);
+      else setOpen(false);
       return;
     }
     if (ev.key === "Escape") {
@@ -246,7 +259,7 @@ export function mountRiverSearch(opts: {
       ev.preventDefault();
       setOpen(false);
     }
-  });
+  }, true);
 
   const loader = opts.load ?? (() => loadRiverIndex());
   loader()

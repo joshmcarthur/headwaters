@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { resolveNames, searchRivers, type RiverHit } from "./search.ts";
+import { hitForQuery, resolveNames, searchRivers, type RiverHit } from "./search.ts";
 
 const rivers: RiverHit[] = [
   {
@@ -47,6 +47,12 @@ test("prefix ranks above a longer substring", () => {
     hits.findIndex((h) => h.name === "Awanui River") <
       hits.findIndex((h) => h.name === "Te Awa Kairangi / Hutt River"),
   );
+});
+
+test("Enter confirms the current query, not a stale list", () => {
+  assert.equal(hitForQuery(rivers, "hutt")?.name, "Te Awa Kairangi / Hutt River");
+  assert.equal(hitForQuery(rivers, "hutt", 99)?.name, "Te Awa Kairangi / Hutt River");
+  assert.equal(hitForQuery(rivers, "   "), null);
 });
 
 test("empty query returns no hits", () => {
