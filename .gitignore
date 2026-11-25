@@ -43,3 +43,5 @@ web/.env.local
 # Local notes and design-export output
 tmp/
 design/dist/
+docs/plans/
+docs/specs/
