@@ -1,5 +1,6 @@
 import { COUNTRIES } from "./countries.ts";
 import { copy, splitOfficialName } from "./copy.ts";
+import { loadStartHits, prefixLetter } from "./names-bin.ts";
 
 export type RiverHit = {
   name: string;
@@ -81,32 +82,10 @@ export function resolveNames(
   return out;
 }
 
-function isHit(value: unknown): value is RiverHit {
-  if (value == null || typeof value !== "object") return false;
-  const row = value as Record<string, unknown>;
-  const bbox = row.bbox;
-  return (
-    typeof row.name === "string" &&
-    typeof row.id === "number" &&
-    typeof row.metres === "number" &&
-    Array.isArray(bbox) &&
-    bbox.length === 4 &&
-    bbox.every((n) => typeof n === "number")
-  );
-}
-
 export async function loadRiverIndex(
   url: string = COUNTRIES.nz.namesUrl,
 ): Promise<RiverHit[]> {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error("names missing");
-  const data: unknown = await res.json();
-  if (!Array.isArray(data)) throw new Error("names invalid");
-  const rivers: RiverHit[] = [];
-  for (const row of data) {
-    if (isHit(row)) rivers.push(row);
-  }
-  return rivers;
+  return loadStartHits(url);
 }
 
 function escapeText(value: string): string {
@@ -135,6 +114,7 @@ export function mountRiverSearch(opts: {
   startList: HTMLElement | null;
   onPick: (hit: RiverHit) => void;
   load?: () => Promise<RiverHit[]>;
+  loadPrefix?: (query: string) => Promise<RiverHit[]>;
   startRivers?: readonly string[];
 }): RiverSearchHandle {
   let rivers: RiverHit[] = [];
@@ -142,6 +122,7 @@ export function mountRiverSearch(opts: {
   let active = 0;
   let open = false;
   let loaded = false;
+  const prefixCache = new Map<string, RiverHit[]>();
 
   const setOpen = (next: boolean): void => {
     open = next;
@@ -193,14 +174,41 @@ export function mountRiverSearch(opts: {
     opts.onPick(hit);
   };
 
+  const paintQuery = (q: string, rows: RiverHit[]): void => {
+    rivers = rows;
+    loaded = true;
+    paintList(searchRivers(rows, q), copy.searchNone);
+    markActive();
+  };
+
   const runQuery = (): void => {
-    if (!loaded) return;
     const q = opts.input.value;
     if (!q.trim()) {
       setOpen(false);
       hits = [];
       return;
     }
+    if (opts.loadPrefix) {
+      const key = prefixLetter(q);
+      const cached = prefixCache.get(key);
+      if (cached) {
+        paintQuery(q, cached);
+        return;
+      }
+      void opts
+        .loadPrefix(q)
+        .then((rows) => {
+          if (opts.input.value !== q) return;
+          prefixCache.set(key, rows);
+          paintQuery(q, rows);
+        })
+        .catch(() => {
+          if (opts.input.value !== q) return;
+          paintList([], copy.searchIndexFailed);
+        });
+      return;
+    }
+    if (!loaded) return;
     paintList(searchRivers(rivers, q), copy.searchNone);
     markActive();
   };

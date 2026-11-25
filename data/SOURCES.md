@@ -28,10 +28,12 @@ No `RivName` on `riverlines` or any other table in `nzRec2_v5.gdb`. Names are a 
 | File | Role |
 | --- | --- |
 | `web/public/data/nz/reaches.pmtiles` | Map geometry. ~90 MB tippecanoe MVT of `riverlines` with `LID = 0`, WGS84, z4–13. Feature id / property `id`. Also `StreamOrde`. In-lake REC2 chords (`LID > 0`) stay in the graph but are not drawn. Gitignored. Publish with the graph in GitHub Release tag `data`. |
-| `web/public/data/nz/reaches.bin` | Compact graph. Magic `HWG1` v3: `id u32`, downstream `id u32` (0 = sink), `length_m f32`, interned UTF-8 names, then inland sink ids (none for New Zealand). Reverse `up` index is built in the browser. Gitignored. Publish with the tiles in GitHub Release tag `data`. |
-| `web/public/data/nz/names.json` | Search index. One row per official name: longest connected stretch, outlet `nzsegment`, stretch length in metres, WGS84 bbox of member envelopes. Gitignored. Publish with the graph and tiles in GitHub Release tag `data`. |
+| `web/public/data/nz/reaches.bin` | Compact graph. Magic `HWG2`: interned names, sorted id index, DFS records and heavy-path records (24 bytes). The browser range-requests the tributary tree of a tap and its path to the mouth. Gitignored. Publish with the tiles in GitHub Release tag `data`. |
+| `web/public/data/nz/names.bin` | Search index `HWN1`. Start-list hits plus names grouped by folded first letter. Gitignored. Publish with the graph and tiles in GitHub Release tag `data`. |
 
 Rebuild: `PYTHONPATH=pipeline/src python3 -m headwaters_pipeline.export_graph --country nz` then `bash pipeline/scripts/build_tiles.sh nz`.
+
+Export (2026-11-25): HWG2 `reaches.bin` is 38,171,076 bytes (~36 MB). HWN1 `names.bin` is 470,985 bytes (~460 KB).
 
 `NextDownID` is mapped HydroID → `nzsegment` in `export_graph.py`. Unmapped pointers stay as that HydroID so a walk can raise a gap. Do not invent edges.
 
@@ -52,7 +54,7 @@ Do not page the FeatureServer. Hub CSV is the archive.
 
 `RivName` is unofficial topo naming. Gazetteer wins where we have a documented overlay. Gazette 2011-ln7607: exact `RivName` **Hutt River** becomes **Te Awa Kairangi / Hutt River**. Eastern Hutt River and Western Hutt River are unchanged. Do not invent Māori names.
 
-Packed names live in `reaches.bin` (HWG1 string table). Unnamed stays unnamed. Search uses `names.json`, rebuilt by the same `export_graph` run. One result per official name: the longest connected stretch. Shorter waterways that share a spelling are omitted. A stretch with no envelope is omitted because the map cannot fly to it.
+Packed names live in `reaches.bin` (HWG2 string table). Unnamed stays unnamed. Search uses `names.bin`, rebuilt by the same `export_graph` run. One result per official name: the longest connected stretch. Shorter waterways that share a spelling are omitted. A stretch with no envelope is omitted because the map cannot fly to it.
 
 ## Bureau of Meteorology Geofabric Surface Hydrology Network V3.3
 
@@ -82,15 +84,15 @@ Inland sinks: 56,079 (terminus node `AHGFFType = 5`, `DiffusType` not Coastal or
 
 Rebuild: `PYTHONPATH=pipeline/src python3 -m headwaters_pipeline.export_graph --country au` then `bash pipeline/scripts/build_tiles.sh au`.
 
-Export (2026-11-25): about 4.3 minutes. `reaches.bin` 36,097,606 bytes (~34 MB; ~21 MB gzip). `names.json` 2.9 MB (~1.0 MB gzip), 22,208 rivers.
+Export (2026-11-25): about 1.8 minutes. HWG2 `reaches.bin` is 165,384,630 bytes (~158 MB). HWN1 `names.bin` is 898,010 bytes (~877 KB, 22,208 named rivers). The browser range-requests slices; it does not download the whole graph.
 
 ### Product artefacts
 
 | File | Role |
 | --- | --- |
 | `web/public/data/au/reaches.pmtiles` | Map geometry. `AHGFFType = 1` only, WGS84, z2–13. Feature id / property `id`. Also `StreamOrde`. Gitignored. |
-| `web/public/data/au/reaches.bin` | Compact graph. HWG1 v3 of every `AHGFNetworkStream`. Gitignored. |
-| `web/public/data/au/names.json` | Search index. One row per Geofabric `Name`. Gitignored. |
+| `web/public/data/au/reaches.bin` | Compact graph. HWG2 of every `AHGFNetworkStream`. Gitignored. |
+| `web/public/data/au/names.bin` | Search index. One row per Geofabric `Name`, packed HWN1. Gitignored. |
 
 ## Not in this extract
 

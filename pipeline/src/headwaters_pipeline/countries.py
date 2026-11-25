@@ -4,7 +4,7 @@ The browser loads the same three files for each country:
 
 - ``web/public/data/{code}/reaches.bin``
 - ``web/public/data/{code}/reaches.pmtiles``
-- ``web/public/data/{code}/names.json``
+- ``web/public/data/{code}/names.bin``
 """
 
 from __future__ import annotations
@@ -33,6 +33,7 @@ class Country:
     inland_layer: str | None = None
     inland_id_field: str | None = None
     inland_where: str | None = None
+    start_rivers: tuple[str, ...] = ()
 
 
 def repo_root() -> Path:
@@ -53,6 +54,16 @@ COUNTRIES: dict[str, Country] = {
         envelope_where=None,
         tile_sql="SELECT nzsegment AS id, StreamOrde FROM riverlines WHERE LID = 0",
         min_zoom=4,
+        start_rivers=(
+            "Waikato River",
+            "Whanganui River",
+            "Rangitikei River",
+            "Manawatu River",
+            "Te Awa Kairangi / Hutt River",
+            "Waimakariri River",
+            "Waitaki River",
+            "Clutha River",
+        ),
     ),
     "au": Country(
         code="au",
@@ -74,6 +85,16 @@ COUNTRIES: dict[str, Country] = {
         tile_dialect="SQLITE",
         length_fallback_srs="EPSG:3577",
         inland_layer="AHGFNetworkNode",
+        start_rivers=(
+            "SWAN RIVER",
+            "ORD RIVER",
+            "ROPER RIVER",
+            "COOPER CREEK",
+            "BURDEKIN RIVER",
+            "RIVER MURRAY",
+            "SNOWY RIVER",
+            "RIVER DERWENT",
+        ),
     ),
 }
 

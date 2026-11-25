@@ -12,6 +12,7 @@ from headwaters_pipeline.export_graph import (
     records_from_rows,
     validate_ids,
     write_binary,
+    write_names_bin,
 )
 
 
@@ -152,14 +153,69 @@ def test_inland_sinks_are_terminus_nodes_without_coastal_diffus() -> None:
     assert inland_stream_ids(sinks, nodes) == [20]
 
 
-def test_write_binary_v3_includes_inland_ids(tmp_path) -> None:
+def test_write_binary_hwg2_round_trip(tmp_path) -> None:
     path = tmp_path / "reaches.bin"
-    write_binary(path, [(1, 0, 10.0), (2, 0, 20.0)], {1: "Creek"}, inland=[2])
+    write_binary(
+        path,
+        [(1, 2, 10.0), (2, 0, 20.0), (4, 2, 5.0)],
+        {1: "Creek"},
+        inland=[2],
+    )
     data = path.read_bytes()
-    assert data[:4] == b"HWG1"
-    version = int.from_bytes(data[4:6], "little")
-    assert version == 3
-    inland_count = int.from_bytes(data[-8:-4], "little")
-    inland_id = int.from_bytes(data[-4:], "little")
-    assert inland_count == 1
-    assert inland_id == 2
+    assert data[:4] == b"HWG2"
+    count = int.from_bytes(data[8:12], "little")
+    assert count == 3
+    index_pages_off = int.from_bytes(data[32:36], "little")
+    # Sorted ids 1, 2, 4. Side creek 4 is the third index row.
+    row = index_pages_off + 2 * 16
+    assert int.from_bytes(data[row : row + 4], "little") == 4
+    subtree = int.from_bytes(data[row + 12 : row + 16], "little")
+    assert subtree == 1
+
+
+def test_write_binary_hwg2_survives_a_deep_chain(tmp_path) -> None:
+    path = tmp_path / "reaches.bin"
+    n = 1200
+    records = [(i, i + 1 if i < n else 0, 1.0) for i in range(1, n + 1)]
+    records[-1] = (n, 0, 1.0)
+    write_binary(path, records, {}, inland=[n])
+    data = path.read_bytes()
+    assert data[:4] == b"HWG2"
+    assert int.from_bytes(data[8:12], "little") == n
+
+
+def test_write_binary_hwg2_survives_a_down_cycle(tmp_path) -> None:
+    path = tmp_path / "reaches.bin"
+    write_binary(path, [(1, 2, 1.0), (2, 1, 1.0), (3, 0, 1.0)], {})
+    data = path.read_bytes()
+    assert data[:4] == b"HWG2"
+    assert int.from_bytes(data[8:12], "little") == 3
+
+
+def test_write_names_bin_start_and_prefix(tmp_path) -> None:
+    path = tmp_path / "names.bin"
+    rivers = [
+        {
+            "name": "Murray River",
+            "id": 10,
+            "metres": 1000.0,
+            "bbox": [140.0, -36.0, 148.0, -34.0],
+        },
+        {
+            "name": "Avon River",
+            "id": 20,
+            "metres": 50.0,
+            "bbox": [172.0, -44.0, 173.0, -43.0],
+        },
+    ]
+    write_names_bin(path, rivers, ("Murray River",), 42)
+    data = path.read_bytes()
+    assert data[:4] == b"HWN1"
+    build = int.from_bytes(data[8:12], "little")
+    assert build == 42
+    start_count = int.from_bytes(data[12:16], "little")
+    assert start_count == 1
+    start_off = int.from_bytes(data[16:20], "little")
+    name_len = int.from_bytes(data[start_off : start_off + 2], "little")
+    name = data[start_off + 2 : start_off + 2 + name_len].decode("utf-8")
+    assert name == "Murray River"

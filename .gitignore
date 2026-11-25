@@ -16,6 +16,7 @@ web/public/data/names.json
 web/public/data/**/*.bin
 web/public/data/**/*.pmtiles
 web/public/data/**/names.json
+web/public/data/**/names.bin
 
 # Python
 __pycache__/

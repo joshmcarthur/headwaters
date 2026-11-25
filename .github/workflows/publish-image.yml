@@ -31,11 +31,11 @@ jobs:
           if [[ -f web/public/data/reaches.pmtiles ]]; then
             mv web/public/data/reaches.pmtiles web/public/data/nz/reaches.pmtiles
           fi
-          if [[ -f web/public/data/names.json ]]; then
-            mv web/public/data/names.json web/public/data/nz/names.json
+          if [[ -f web/public/data/names.bin ]]; then
+            mv web/public/data/names.bin web/public/data/nz/names.bin
           fi
           for country in nz au; do
-            for file in reaches.bin reaches.pmtiles names.json; do
+            for file in reaches.bin reaches.pmtiles names.bin; do
               if [[ -f "web/public/data/${country}-${file}" ]]; then
                 mv "web/public/data/${country}-${file}" "web/public/data/${country}/${file}"
               fi
@@ -43,7 +43,7 @@ jobs:
           done
           test -s web/public/data/nz/reaches.bin
           test -s web/public/data/nz/reaches.pmtiles
-          test -s web/public/data/nz/names.json
+          test -s web/public/data/nz/names.bin
 
       - uses: docker/login-action@v3
         with:

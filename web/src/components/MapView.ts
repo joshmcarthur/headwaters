@@ -9,13 +9,15 @@ import {
   readStoredCountry,
 } from "../lib/countries.ts";
 import { copy, formatLength, splitOfficialName } from "../lib/copy.ts";
-import { loadRiverIndex, mountRiverSearch, type RiverHit } from "../lib/search.ts";
+import { GraphStore } from "../lib/graph-store.ts";
+import { openByteCache } from "../lib/range-cache.ts";
+import { loadPrefixHits, loadStartHits } from "../lib/names-bin.ts";
+import { mountRiverSearch, type RiverHit } from "../lib/search.ts";
 import { THEME_EVENT } from "../lib/theme.ts";
 import { HILLSHADE_EXAGGERATION, sceneView } from "../lib/terrain-view.ts";
 import {
   GapError,
   collapseRoute,
-  loadCompactGraph,
   maxPathLength,
   tapSelectedPoint,
   type GraphView,
@@ -271,7 +273,7 @@ function fillSourceToSea(runs: RouteRun[]): void {
   }
 }
 
-function updatePanel(graph: GraphView, id: SegmentId | null, gap: boolean): void {
+function updatePanel(graph: GraphView | null, id: SegmentId | null, gap: boolean): void {
   const empty = el("empty-panel");
   const selected = el("river-panel");
   const maori = el("place-maori");
@@ -282,7 +284,7 @@ function updatePanel(graph: GraphView, id: SegmentId | null, gap: boolean): void
   const gapNote = el("gap-note");
   const disc = sourceToSeaDetails();
 
-  if (!id) {
+  if (!id || !graph) {
     empty.hidden = false;
     selected.hidden = true;
     disc.hidden = true;
@@ -365,9 +367,10 @@ export async function mountMap(): Promise<void> {
     history.replaceState(history.state, "", countryUrl(country.code));
   }
   applyAttribution(country);
-  const graphRes = await fetch(country.graphUrl);
-  if (!graphRes.ok) throw new Error(copy.dataMissing);
-  const graph = loadCompactGraph(await graphRes.arrayBuffer());
+  const store = new GraphStore(country.graphUrl, {
+    cache: await openByteCache("hw-graph-v2"),
+  });
+  void store.warmup();
   const tilesUrl = `pmtiles://${window.location.origin}${country.tilesPath}`;
   let paint = readPaint();
 
@@ -596,6 +599,7 @@ export async function mountMap(): Promise<void> {
   let painted: number[] = [];
   let pathway: number[] = [];
   let frameGen = 0;
+  let selectGen = 0;
 
   const stateRef = (id: number) => ({
     source: "reaches",
@@ -652,8 +656,9 @@ export async function mountMap(): Promise<void> {
   };
 
   const clear = (historyMode: HistoryMode): void => {
+    selectGen += 1;
     paintClear();
-    updatePanel(graph, null, false);
+    updatePanel(null, null, false);
     if (historyMode === "push") recordHash(null, "push");
     if (historyMode === "replace") recordHash(null, "replace");
   };
@@ -674,8 +679,23 @@ export async function mountMap(): Promise<void> {
     requestAnimationFrame(() => requestAnimationFrame(start));
   };
 
-  const select = (id: number, historyMode: HistoryMode): void => {
-    if (!graph.has(id)) return;
+  const select = async (id: number, historyMode: HistoryMode): Promise<boolean> => {
+    const gen = ++selectGen;
+    let graph: GraphView;
+    try {
+      graph = await store.loadById(id);
+    } catch (err) {
+      if (gen !== selectGen) return false;
+      if (err instanceof Error && err.message.startsWith("Unknown segment")) {
+        clear(historyMode === "none" ? "none" : "replace");
+        return false;
+      }
+      console.error(err);
+      const empty = document.querySelector("#empty-panel p");
+      if (empty) empty.textContent = copy.dataMissing;
+      return false;
+    }
+    if (gen !== selectGen) return false;
     paintClear();
     let gap = false;
     let marks = {
@@ -708,6 +728,7 @@ export async function mountMap(): Promise<void> {
     updatePanel(graph, id, gap);
     if (historyMode === "push") recordHash(id, "push");
     if (historyMode === "replace") recordHash(id, "replace");
+    return true;
   };
 
   const searchInput = document.querySelector("#river-search");
@@ -720,18 +741,21 @@ export async function mountMap(): Promise<void> {
           list: searchList,
           startList: startList instanceof HTMLElement ? startList : null,
           startRivers: country.startRivers,
-          load: () => loadRiverIndex(country.namesUrl),
+          load: () => loadStartHits(country.namesUrl),
+          loadPrefix: (query) => loadPrefixHits(country.namesUrl, query),
           onPick: (hit: RiverHit) => {
-            select(hit.id, "push");
-            const gen = ++frameGen;
-            const ids = pathway.slice();
-            const fallback = hit.bbox;
-            const start = (): void => {
-              if (gen !== frameGen) return;
-              map.stop();
-              framePathway(map, ids, fallback, gen, () => frameGen);
-            };
-            requestAnimationFrame(() => requestAnimationFrame(start));
+            void select(hit.id, "push").then((ok) => {
+              if (!ok) return;
+              const gen = ++frameGen;
+              const ids = pathway.slice();
+              const fallback = hit.bbox;
+              const start = (): void => {
+                if (gen !== frameGen) return;
+                map.stop();
+                framePathway(map, ids, fallback, gen, () => frameGen);
+              };
+              requestAnimationFrame(() => requestAnimationFrame(start));
+            });
           },
         })
       : null;
@@ -739,8 +763,8 @@ export async function mountMap(): Promise<void> {
   const applyHash = (): void => {
     if (!riversReady) return;
     const id = hashSegmentId(location.hash);
-    if (id != null && graph.has(id)) {
-      select(id, "none");
+    if (id != null) {
+      void select(id, "none");
       return;
     }
     clear("none");
@@ -762,7 +786,7 @@ export async function mountMap(): Promise<void> {
       clear("push");
       return;
     }
-    select(id, "push");
+    void select(id, "push");
   });
 
   map.on("mouseenter", "reaches-hit", () => {
@@ -804,7 +828,7 @@ export async function mountMap(): Promise<void> {
     ev.preventDefault();
     const id = hashSegmentId(link.hash);
     if (id == null) return;
-    select(id, "push");
+    void select(id, "push");
     sourceToSeaDetails().open = true;
     zoomToPainted();
   });
