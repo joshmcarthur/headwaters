@@ -1,40 +1,43 @@
 #!/usr/bin/env bash
-# Build national REC2 PMTiles from the gitignored File Geodatabase.
-# Intermediates stay in data/derived/. Output: web/public/data/reaches.pmtiles
+# Build country PMTiles from the gitignored File Geodatabase.
+# Intermediates stay in data/derived/. Output: web/public/data/{country}/reaches.pmtiles
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-GDB="$ROOT/data/raw/nzRec2_v5.gdb"
-DERIVED="$ROOT/data/derived"
-OUT="$ROOT/web/public/data/reaches.pmtiles"
+COUNTRY="${1:-nz}"
+eval "$(PYTHONPATH="$ROOT/pipeline/src" python3 -m headwaters_pipeline.countries "$COUNTRY")"
 
 if [[ ! -d "$GDB" ]]; then
-  echo "Missing $GDB. Download REC2 v5 into data/raw/ (see README.md)." >&2
+  echo "Missing $GDB. Download the source geodatabase into data/raw/ (see README.md)." >&2
   exit 1
 fi
 
-mkdir -p "$DERIVED" "$(dirname "$OUT")"
+mkdir -p "$(dirname "$OUT")"
 
-echo "Streaming riverlines to tippecanoe…"
-# LID > 0 is REC2 in-lake routing: straight DEM chords that fill lakes
-# (Taupō, hydro ponds) as a hatch of parallel "rivers". Keep those
-# reaches in reaches.bin so walks still cross the lake; do not draw them.
+echo "Streaming $COUNTRY river lines to tippecanoe…"
+# NZ: LID > 0 is REC2 in-lake routing. AU: AHGFFType != 1 is a connector
+# or waterbody chord. Keep those reaches in reaches.bin so walks still
+# cross; do not draw them.
+OGR_DIALECT=()
+if [[ -n "${TILE_DIALECT:-}" ]]; then
+  OGR_DIALECT=(-dialect "$TILE_DIALECT")
+fi
 ogr2ogr -t_srs EPSG:4326 -f GeoJSONSeq /vsistdout/ \
-  -where "LID = 0" \
-  -select nzsegment,StreamOrde \
-  "$GDB" riverlines \
+  "${OGR_DIALECT[@]}" \
+  -sql "$TILE_SQL" \
+  "$GDB" \
 | tippecanoe \
   --force \
   --layer=reaches \
-  --minimum-zoom=4 \
+  --minimum-zoom="$MIN_ZOOM" \
   --maximum-zoom=13 \
-  --use-attribute-for-id=nzsegment \
-  --attribute-type=nzsegment:int \
+  --use-attribute-for-id=id \
+  --attribute-type=id:int \
   --attribute-type=StreamOrde:int \
   --drop-smallest-as-needed \
   --extend-zooms-if-still-dropping \
   --no-feature-limit \
-  --include=nzsegment \
+  --include=id \
   --include=StreamOrde \
   -o "$OUT"
 

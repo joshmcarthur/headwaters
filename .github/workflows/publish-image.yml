@@ -19,15 +19,31 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          mkdir -p web/public/data
+          mkdir -p web/public/data/nz web/public/data/au
           if ! gh release download data --repo "${{ github.repository }}" --dir web/public/data; then
-            echo "Missing GitHub Release tag 'data' with reaches.bin, reaches.pmtiles, and names.json."
+            echo "Missing GitHub Release tag 'data' with New Zealand river files."
             echo "Create it from a machine that has the files (see README.md)."
             exit 1
           fi
-          test -s web/public/data/reaches.bin
-          test -s web/public/data/reaches.pmtiles
-          test -s web/public/data/names.json
+          if [[ -f web/public/data/reaches.bin ]]; then
+            mv web/public/data/reaches.bin web/public/data/nz/reaches.bin
+          fi
+          if [[ -f web/public/data/reaches.pmtiles ]]; then
+            mv web/public/data/reaches.pmtiles web/public/data/nz/reaches.pmtiles
+          fi
+          if [[ -f web/public/data/names.json ]]; then
+            mv web/public/data/names.json web/public/data/nz/names.json
+          fi
+          for country in nz au; do
+            for file in reaches.bin reaches.pmtiles names.json; do
+              if [[ -f "web/public/data/${country}-${file}" ]]; then
+                mv "web/public/data/${country}-${file}" "web/public/data/${country}/${file}"
+              fi
+            done
+          done
+          test -s web/public/data/nz/reaches.bin
+          test -s web/public/data/nz/reaches.pmtiles
+          test -s web/public/data/nz/names.json
 
       - uses: docker/login-action@v3
         with:
