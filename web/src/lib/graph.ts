@@ -404,10 +404,9 @@ export type TapHighlights = {
   catchment: SegmentId[];
 };
 
-export function tapHighlights(graph: GraphView, start: SegmentId): TapHighlights {
+export function tapSelectedPoint(graph: GraphView, start: SegmentId): TapHighlights {
   const down = walkDownstream(graph, start);
-  const mouth = down[down.length - 1];
-  const basin = walkUpstream(graph, mouth);
+  const up = walkUpstream(graph, start);
   const { node: source } = furthestSource(graph, start);
   const fromSource = walkDownstream(graph, source);
   const i = fromSource.findIndex((id) => String(id) === String(start));
@@ -416,6 +415,6 @@ export function tapHighlights(graph: GraphView, start: SegmentId): TapHighlights
     selected: start,
     downstream: down.slice(1),
     main: fromSource.slice(0, i),
-    catchment: basin.filter((id) => String(id) !== String(start)),
+    catchment: up.filter((id) => String(id) !== String(start)),
   };
 }
