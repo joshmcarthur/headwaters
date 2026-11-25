@@ -13,6 +13,9 @@ web/public/data/*-graph.json
 web/public/data/*.bin
 web/public/data/*.pmtiles
 web/public/data/names.json
+web/public/data/**/*.bin
+web/public/data/**/*.pmtiles
+web/public/data/**/names.json
 
 # Python
 __pycache__/

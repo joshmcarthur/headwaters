@@ -1,8 +1,17 @@
+import pytest
+
+from headwaters_pipeline.countries import get_country
 from headwaters_pipeline.export_graph import (
+    apply_length_fallbacks,
+    envelope_from_record,
     envelope_from_wkt,
+    inland_stream_ids,
+    load_names_from_export,
     longest_stretches,
     official_name,
     records_from_rows,
+    validate_ids,
+    write_binary,
 )
 
 
@@ -84,3 +93,73 @@ def test_envelope_from_wkt_reads_multilinestring() -> None:
         "MULTILINESTRING ((173.0 -34.4,173.1 -34.5),(173.2 -34.6,173.3 -34.3))"
     )
     assert bbox == (173.0, -34.6, 173.3, -34.3)
+
+
+def test_envelope_from_record_reads_bbox_columns() -> None:
+    bbox = envelope_from_record(
+        {"id": "1", "minx": "174.0", "miny": "-41.0", "maxx": "175.0", "maxy": "-40.0"}
+    )
+    assert bbox == (174.0, -41.0, 175.0, -40.0)
+
+
+def test_australia_hydroid_is_identity_map() -> None:
+    rows = [
+        (10, 10, 20, 50.0),
+        (20, 20, 0, 80.0),
+    ]
+    assert records_from_rows(rows) == [(10, 20, 50.0), (20, 0, 80.0)]
+
+
+def test_null_length_uses_fallback_not_zero() -> None:
+    rows = [(10, 10, 0, None), (11, 11, 0, 12.0)]
+    filled = apply_length_fallbacks(rows, {10: 33.5})
+    assert filled == [(10, 10, 0, 33.5), (11, 11, 0, 12.0)]
+
+
+def test_null_length_without_fallback_fails() -> None:
+    with pytest.raises(SystemExit, match="No length"):
+        apply_length_fallbacks([(10, 10, 0, None)], {})
+
+
+def test_blank_geofabric_name_stays_unnamed(tmp_path) -> None:
+    csv_path = tmp_path / "au.csv"
+    csv_path.write_text("HydroID,Name\n1,Murray River\n2,\n3,   \n", encoding="utf-8")
+    names = load_names_from_export(csv_path, get_country("au"))
+    assert names == {1: "Murray River"}
+
+
+def test_hierarchy_tile_sql_maps_major_minor() -> None:
+    sql = get_country("au").tile_sql
+    assert "AHGFFType = 1" in sql
+    assert "WHEN 'Major' THEN 5" in sql
+    assert "WHEN 'Minor' THEN 2" in sql
+    assert ", Shape FROM" in sql
+    assert get_country("au").tile_dialect == "SQLITE"
+
+
+def test_duplicate_or_overflow_ids_fail() -> None:
+    with pytest.raises(SystemExit, match="Duplicate"):
+        validate_ids([(1, 1, 0, 1.0), (1, 1, 0, 2.0)])
+    with pytest.raises(SystemExit, match="u32"):
+        validate_ids([(-1, -1, 0, 1.0)])
+    with pytest.raises(SystemExit, match="u32"):
+        validate_ids([(2**32, 2**32, 0, 1.0)])
+
+
+def test_inland_sinks_are_terminus_nodes_without_coastal_diffus() -> None:
+    sinks = [(10, 100), (20, 200), (30, 300)]
+    nodes = [(100, "Coastal"), (200, ""), (300, "Delta")]
+    assert inland_stream_ids(sinks, nodes) == [20]
+
+
+def test_write_binary_v3_includes_inland_ids(tmp_path) -> None:
+    path = tmp_path / "reaches.bin"
+    write_binary(path, [(1, 0, 10.0), (2, 0, 20.0)], {1: "Creek"}, inland=[2])
+    data = path.read_bytes()
+    assert data[:4] == b"HWG1"
+    version = int.from_bytes(data[4:6], "little")
+    assert version == 3
+    inland_count = int.from_bytes(data[-8:-4], "little")
+    inland_id = int.from_bytes(data[-4:], "little")
+    assert inland_count == 1
+    assert inland_id == 2

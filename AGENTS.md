@@ -1,10 +1,10 @@
 # Headwaters
 
-Interactive atlas of Aotearoa New Zealand’s rivers. Subtitle: Ki uta ki tai — from the mountains to the sea.
+Interactive atlas of Aotearoa New Zealand’s and Australia’s rivers. Subtitle: Ki uta ki tai — from the mountains to the sea.
 
-Scope: Aotearoa New Zealand. Visual identity comes from `design/Headwaters/`.
+Scope: Aotearoa New Zealand and Australia. Visual identity comes from `design/Headwaters/`.
 
-Architecture: Astro + MapLibre, national PMTiles of REC2 `riverlines`, compact binary graph, no PostGIS, no React, no Three.js. Do not ship nationwide GeoJSON. River network is NIWA REC2 v5 (CC BY-NC 4.0). Do not use it commercially.
+Architecture: Astro + MapLibre, per-country PMTiles and compact binary graphs, no PostGIS, no React, no Three.js. Do not ship nationwide GeoJSON. New Zealand network is NIWA REC2 v5 (CC BY-NC 4.0). Do not use it commercially. Australia network is Bureau of Meteorology Geofabric Surface Hydrology Network V3.3 (CC BY 4.0).
 
 ## User-facing prose
 

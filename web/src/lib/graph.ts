@@ -21,6 +21,7 @@ export type GraphView = {
   length(id: SegmentId): number;
   up(id: SegmentId): SegmentId[];
   name(id: SegmentId): string | null;
+  isInlandSink(id: SegmentId): boolean;
 };
 
 export class GapError extends Error {
@@ -63,11 +64,14 @@ export function riverGraphView(graph: RiverGraph): GraphView {
     name(id) {
       return graph.segments[sid(id)]?.official_name ?? null;
     },
+    isInlandSink() {
+      return false;
+    },
   };
 }
 
 const MAGIC = 0x31475748; // 'HWG1' little-endian
-const VERSION = 2;
+const VERSION = 3;
 
 export type CompactRecord = {
   id: number;
@@ -84,18 +88,21 @@ export class CompactGraph implements GraphView {
   private readonly index: Map<number, number>;
   private readonly ups: number[][];
   private readonly names: Map<number, string>;
+  private readonly inland: Set<number>;
 
   constructor(
     ids: Uint32Array,
     downs: Uint32Array,
     lengths: Float32Array,
     names: Map<number, string> = new Map(),
+    inland: Set<number> = new Set(),
   ) {
     this.count = ids.length;
     this.ids = ids;
     this.downs = downs;
     this.lengths = lengths;
     this.names = names;
+    this.inland = inland;
     this.index = new Map();
     this.ups = Array.from({ length: ids.length }, () => []);
     for (let i = 0; i < ids.length; i++) {
@@ -132,6 +139,10 @@ export class CompactGraph implements GraphView {
     return this.names.get(Number(id)) ?? null;
   }
 
+  isInlandSink(id: SegmentId): boolean {
+    return this.inland.has(Number(id));
+  }
+
   private row(id: SegmentId): number {
     const i = this.index.get(Number(id));
     if (i === undefined) throw new Error(`Unknown segment ${id}`);
@@ -151,7 +162,7 @@ export function loadCompactGraph(buffer: ArrayBuffer): CompactGraph {
   const magic = view.getUint32(0, true);
   if (magic !== MAGIC) throw new Error("Graph file is not HWG1");
   const version = view.getUint16(4, true);
-  if (version !== 1 && version !== 2) {
+  if (version !== 1 && version !== 2 && version !== 3) {
     throw new Error(`Unsupported graph version ${version}`);
   }
   const count = view.getUint32(8, true);
@@ -167,6 +178,7 @@ export function loadCompactGraph(buffer: ArrayBuffer): CompactGraph {
     lengths[i] = view.getFloat32(o + 8, true);
   }
   const names = new Map<number, string>();
+  let inlandStart = recEnd;
   if (version >= 2 && view.byteLength >= recEnd + 8) {
     const namedCount = view.getUint32(recEnd, true);
     const strBytes = view.getUint32(recEnd + 4, true);
@@ -183,11 +195,29 @@ export function loadCompactGraph(buffer: ArrayBuffer): CompactGraph {
       const label = readCString(strings, off);
       if (label) names.set(id, label);
     }
+    inlandStart = strStart + strBytes;
   }
-  return new CompactGraph(ids, downs, lengths, names);
+  const inland = new Set<number>();
+  if (version >= 3) {
+    if (view.byteLength < inlandStart + 4) {
+      throw new Error("Graph file inland table is truncated");
+    }
+    const inlandCount = view.getUint32(inlandStart, true);
+    const inlandIdsStart = inlandStart + 4;
+    if (view.byteLength < inlandIdsStart + inlandCount * 4) {
+      throw new Error("Graph file inland table is truncated");
+    }
+    for (let i = 0; i < inlandCount; i++) {
+      inland.add(view.getUint32(inlandIdsStart + i * 4, true));
+    }
+  }
+  return new CompactGraph(ids, downs, lengths, names, inland);
 }
 
-export function encodeCompact(records: CompactRecord[]): ArrayBuffer {
+export function encodeCompact(
+  records: CompactRecord[],
+  opts: { inland?: number[]; version?: 2 | 3 } = {},
+): ArrayBuffer {
   const named = records.filter((r) => r.name);
   const unique: string[] = [];
   const intern = new Map<string, number>();
@@ -211,11 +241,14 @@ export function encodeCompact(records: CompactRecord[]): ArrayBuffer {
     strOffsets.push(strBytes);
     strBytes += part.length;
   }
+  const version = opts.version ?? VERSION;
+  const inland = version >= 3 ? [...new Set(opts.inland ?? [])] : [];
   const recEnd = 12 + records.length * 12;
-  const buf = new ArrayBuffer(recEnd + 8 + named.length * 8 + strBytes);
+  const inlandBytes = version >= 3 ? 4 + inland.length * 4 : 0;
+  const buf = new ArrayBuffer(recEnd + 8 + named.length * 8 + strBytes + inlandBytes);
   const view = new DataView(buf);
   view.setUint32(0, MAGIC, true);
-  view.setUint16(4, VERSION, true);
+  view.setUint16(4, version, true);
   view.setUint16(6, 0, true);
   view.setUint32(8, records.length, true);
   records.forEach((rec, i) => {
@@ -236,6 +269,13 @@ export function encodeCompact(records: CompactRecord[]): ArrayBuffer {
   for (const part of strParts) {
     strings.set(part, cursor);
     cursor += part.length;
+  }
+  if (version >= 3) {
+    const inlandStart = recEnd + 8 + named.length * 8 + strBytes;
+    view.setUint32(inlandStart, inland.length, true);
+    inland.forEach((id, i) => {
+      view.setUint32(inlandStart + 4 + i * 4, id, true);
+    });
   }
   return buf;
 }
@@ -365,8 +405,9 @@ export type TapHighlights = {
 };
 
 export function tapHighlights(graph: GraphView, start: SegmentId): TapHighlights {
-  const up = walkUpstream(graph, start);
   const down = walkDownstream(graph, start);
+  const mouth = down[down.length - 1];
+  const basin = walkUpstream(graph, mouth);
   const { node: source } = furthestSource(graph, start);
   const fromSource = walkDownstream(graph, source);
   const i = fromSource.findIndex((id) => String(id) === String(start));
@@ -375,6 +416,6 @@ export function tapHighlights(graph: GraphView, start: SegmentId): TapHighlights
     selected: start,
     downstream: down.slice(1),
     main: fromSource.slice(0, i),
-    catchment: up.filter((id) => String(id) !== String(start)),
+    catchment: basin.filter((id) => String(id) !== String(start)),
   };
 }

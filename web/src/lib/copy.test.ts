@@ -33,6 +33,13 @@ test("attribution includes Josh McArthur and data credits", () => {
 test("source-to-sea label is sentence case, not Routing", () => {
   assert.equal(copy.fromSourceToSea, "From source to sea");
   assert.equal(copy.fromSourceToSea.includes("Routing"), false);
+  assert.equal(copy.fromSourceToSink, "From source to an inland end");
+});
+
+test("country switch names New Zealand and Australia", () => {
+  assert.equal(copy.countryGroup, "Country");
+  assert.equal(copy.countryNz, "New Zealand");
+  assert.equal(copy.countryAu, "Australia");
 });
 
 test("3D control is a short pressed label", () => {

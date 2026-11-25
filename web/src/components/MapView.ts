@@ -1,7 +1,15 @@
 import { addProtocol, Map as MapLibreMap, removeProtocol } from "maplibre-gl";
 import { Protocol } from "pmtiles";
+import {
+  COUNTRIES,
+  applyAttribution,
+  countryFromLocation,
+  countryUrl,
+  persistCountry,
+  readStoredCountry,
+} from "../lib/countries.ts";
 import { copy, formatLength, splitOfficialName } from "../lib/copy.ts";
-import { mountRiverSearch, type RiverHit } from "../lib/search.ts";
+import { loadRiverIndex, mountRiverSearch, type RiverHit } from "../lib/search.ts";
 import { THEME_EVENT } from "../lib/theme.ts";
 import { HILLSHADE_EXAGGERATION, sceneView } from "../lib/terrain-view.ts";
 import {
@@ -20,10 +28,6 @@ const SOURCE_LAYER = "reaches";
 const MOBILE_MQ = "(max-width: 720px)";
 const MAPTERHORN_TILEJSON = "https://tiles.mapterhorn.com/tilejson.json";
 const CONTEXT_RIVER_LAYER = "reaches";
-const NZ_BOUNDS: [[number, number], [number, number]] = [
-  [166.0, -47.5],
-  [178.9, -34.0],
-];
 
 type MapPaint = {
   land: string;
@@ -119,6 +123,14 @@ function featureId(raw: unknown): number | null {
   return null;
 }
 
+function reachFeatureId(feature: {
+  id?: unknown;
+  properties?: { id?: unknown; nzsegment?: unknown } | null;
+}): number | null {
+  const props = feature.properties;
+  return featureId(feature.id ?? props?.id ?? props?.nzsegment);
+}
+
 type HistoryMode = "push" | "none" | "replace";
 
 type HwHistory = { hw: true; depth: number };
@@ -138,9 +150,8 @@ function hashSegmentId(hash: string): number | null {
   return featureId(hash.slice(1));
 }
 
-function urlForSegment(id: number | null): string {
-  const base = `${location.pathname}${location.search}`;
-  return id == null ? base : `${base}#${id}`;
+function urlForSegment(country: keyof typeof COUNTRIES, id: number | null): string {
+  return countryUrl(country, id);
 }
 
 function sourceToSeaDetails(): HTMLDetailsElement {
@@ -182,7 +193,7 @@ function bboxFromPathway(map: MapLibreMap, ids: number[]): LngLatBbox | null {
   const features = map.querySourceFeatures("reaches", { sourceLayer: SOURCE_LAYER });
   let bbox: LngLatBbox | null = null;
   for (const feature of features) {
-    const raw = feature.id ?? feature.properties?.nzsegment;
+    const raw = reachFeatureId(feature);
     if (raw == null || !want.has(Number(raw))) continue;
     const geom = feature.geometry;
     if (!geom || !("coordinates" in geom)) continue;
@@ -306,6 +317,13 @@ function updatePanel(graph: GraphView, id: SegmentId | null, gap: boolean): void
     value.textContent = formatted.value;
     unit.textContent = formatted.unit;
     fillSourceToSea(collapseRoute(graph, path, id));
+    const mouth = path[path.length - 1];
+    const label = document.querySelector("#source-to-sea-label");
+    if (label) {
+      label.textContent = graph.isInlandSink(mouth)
+        ? copy.fromSourceToSink
+        : copy.fromSourceToSea;
+    }
     disc.hidden = false;
   } catch (err) {
     if (!(err instanceof GapError)) throw err;
@@ -336,17 +354,28 @@ function bindDock(map: MapLibreMap): void {
 export async function mountMap(): Promise<void> {
   ensurePmtilesProtocol();
   const mapEl = el("map");
-  const graphRes = await fetch("/data/reaches.bin");
+  const resolved = countryFromLocation(
+    location.search,
+    location.hash,
+    readStoredCountry(),
+  );
+  const country = COUNTRIES[resolved.code];
+  if (resolved.persist) persistCountry(country.code);
+  if (resolved.writeQuery) {
+    history.replaceState(history.state, "", countryUrl(country.code));
+  }
+  applyAttribution(country);
+  const graphRes = await fetch(country.graphUrl);
   if (!graphRes.ok) throw new Error(copy.dataMissing);
   const graph = loadCompactGraph(await graphRes.arrayBuffer());
-  const tilesUrl = `pmtiles://${window.location.origin}/data/reaches.pmtiles`;
+  const tilesUrl = `pmtiles://${window.location.origin}${country.tilesPath}`;
   let paint = readPaint();
 
   const map = new MapLibreMap({
     container: "map",
     attributionControl: false,
     renderWorldCopies: false,
-    minZoom: 4,
+    minZoom: country.minZoom,
     maxZoom: 14,
     maxPitch: 70,
     style: {
@@ -360,12 +389,9 @@ export async function mountMap(): Promise<void> {
         },
       ],
     },
-    bounds: NZ_BOUNDS,
+    bounds: country.bounds,
     fitBoundsOptions: { padding: 32 },
-    maxBounds: [
-      [165.2, -48.2],
-      [179.4, -33.2],
-    ],
+    maxBounds: country.maxBounds,
   });
 
   map.on("error", (ev) => {
@@ -399,8 +425,8 @@ export async function mountMap(): Promise<void> {
     map.addSource("reaches", {
       type: "vector",
       tiles: [`${tilesUrl}/{z}/{x}/{y}`],
-      minzoom: 4,
-      maxzoom: 13,
+      minzoom: country.minZoom,
+      maxzoom: country.tileMaxZoom,
     });
     const lineLayout = { "line-cap": "round" as const, "line-join": "bevel" as const };
     map.addLayer({
@@ -568,6 +594,7 @@ export async function mountMap(): Promise<void> {
   });
 
   let painted: number[] = [];
+  let pathway: number[] = [];
   let frameGen = 0;
 
   const stateRef = (id: number) => ({
@@ -609,11 +636,12 @@ export async function mountMap(): Promise<void> {
       });
     }
     painted = [];
+    pathway = [];
     setContextDim(false);
   };
 
   const recordHash = (id: number | null, mode: "push" | "replace"): void => {
-    const next = urlForSegment(id);
+    const next = urlForSegment(country.code, id);
     const current = `${location.pathname}${location.search}${location.hash}`;
     if (mode === "replace") {
       history.replaceState({ hw: true, depth: hwDepth() }, "", next);
@@ -637,7 +665,7 @@ export async function mountMap(): Promise<void> {
 
   const zoomToPainted = (): void => {
     const gen = ++frameGen;
-    const ids = painted.slice();
+    const ids = pathway.slice();
     const start = (): void => {
       if (gen !== frameGen) return;
       map.stop();
@@ -667,12 +695,13 @@ export async function mountMap(): Promise<void> {
     const mainSet = new Set(marks.main.map(Number));
     const catchSet = new Set(marks.catchment.map(Number));
     painted = [id, ...downSet, ...mainSet, ...catchSet];
+    pathway = [id, ...marks.main, ...marks.downstream].map(Number);
     for (const sid of painted) {
       map.setFeatureState(stateRef(sid), {
         selected: sid === id,
         downstream: downSet.has(sid),
         main: sid !== id && mainSet.has(sid),
-        catchment: sid !== id && !mainSet.has(sid) && catchSet.has(sid),
+        catchment: sid !== id && !mainSet.has(sid) && !downSet.has(sid) && catchSet.has(sid),
       });
     }
     setContextDim(true);
@@ -690,10 +719,12 @@ export async function mountMap(): Promise<void> {
           input: searchInput,
           list: searchList,
           startList: startList instanceof HTMLElement ? startList : null,
+          startRivers: country.startRivers,
+          load: () => loadRiverIndex(country.namesUrl),
           onPick: (hit: RiverHit) => {
             select(hit.id, "push");
             const gen = ++frameGen;
-            const ids = painted.slice();
+            const ids = pathway.slice();
             const fallback = hit.bbox;
             const start = (): void => {
               if (gen !== frameGen) return;
@@ -726,7 +757,7 @@ export async function mountMap(): Promise<void> {
         Number(b.properties?.StreamOrde ?? 0) - Number(a.properties?.StreamOrde ?? 0),
     );
     const hit = hits[0];
-    const id = featureId(hit ? (hit.id ?? hit.properties?.nzsegment) : null);
+    const id = hit ? reachFeatureId(hit) : null;
     if (id == null) {
       clear("push");
       return;

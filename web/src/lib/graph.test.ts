@@ -90,6 +90,35 @@ test("compact graph interned names round-trip", () => {
   assert.equal(compact.name(1), "Te Awa Kairangi / Hutt River");
   assert.equal(compact.name(2), "Te Awa Kairangi / Hutt River");
   assert.equal(compact.name(3), null);
+  assert.equal(compact.isInlandSink(2), false);
+});
+
+test("compact graph v3 inland sinks round-trip", () => {
+  const compact = loadCompactGraph(
+    encodeCompact(
+      [
+        { id: 1, down: 2, length_m: 100 },
+        { id: 2, down: 0, length_m: 200 },
+      ],
+      { inland: [2] },
+    ),
+  );
+  assert.equal(compact.isInlandSink(2), true);
+  assert.equal(compact.isInlandSink(1), false);
+});
+
+test("compact graph v2 files still load", () => {
+  const compact = loadCompactGraph(
+    encodeCompact(
+      [
+        { id: 1, down: 2, length_m: 100, name: "Creek" },
+        { id: 2, down: 0, length_m: 200 },
+      ],
+      { version: 2 },
+    ),
+  );
+  assert.equal(compact.name(1), "Creek");
+  assert.equal(compact.isInlandSink(2), false);
 });
 
 test("tap highlights keep catchment, longest upstream, and downstream distinct", () => {
@@ -97,7 +126,38 @@ test("tap highlights keep catchment, longest upstream, and downstream distinct",
   assert.equal(marks.selected, "B");
   assert.deepEqual(marks.downstream, ["C"]);
   assert.deepEqual(marks.main, ["A"]);
-  assert.deepEqual(new Set(marks.catchment), new Set(["A", "D"]));
+  assert.deepEqual(new Set(marks.catchment), new Set(["A", "C", "D"]));
+});
+
+const basin: RiverGraph = {
+  outlet_nzsegment: 0,
+  sink_nextdownid: 0,
+  segments: {
+    A: { down: "B", length_m: 100, up: [], official_name: null },
+    B: { down: "C", length_m: 200, up: ["A", "D"], official_name: null },
+    C: { down: "E", length_m: 50, up: ["B"], official_name: null },
+    D: { down: "B", length_m: 50, up: [], official_name: null },
+    E: { down: 0, length_m: 300, up: ["C", "F"], official_name: null },
+    F: { down: "E", length_m: 40, up: [], official_name: null },
+  },
+};
+
+const basinView = riverGraphView(basin);
+
+test("tap catchment is the mouth basin, including tributaries that join below the click", () => {
+  const marks = tapHighlights(basinView, "B");
+  assert.equal(marks.selected, "B");
+  assert.deepEqual(marks.downstream, ["C", "E"]);
+  assert.deepEqual(marks.main, ["A"]);
+  assert.deepEqual(new Set(marks.catchment), new Set(["A", "C", "D", "E", "F"]));
+});
+
+test("tap on a side tributary still paints the whole mouth basin", () => {
+  const marks = tapHighlights(basinView, "D");
+  assert.equal(marks.selected, "D");
+  assert.deepEqual(marks.downstream, ["B", "C", "E"]);
+  assert.deepEqual(marks.main, []);
+  assert.deepEqual(new Set(marks.catchment), new Set(["A", "B", "C", "E", "F"]));
 });
 
 const named: RiverGraph = {

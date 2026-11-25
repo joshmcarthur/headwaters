@@ -1,6 +1,6 @@
 # Data sources
 
-Do not commit nationwide GeoJSON, the 476 MB REC2 geodatabase, or huge tile intermediates.
+Do not commit nationwide GeoJSON, the 476 MB REC2 geodatabase, the Geofabric zip, or huge tile intermediates.
 
 ## NIWA REC2 version 5 (June 2019)
 
@@ -27,11 +27,11 @@ No `RivName` on `riverlines` or any other table in `nzRec2_v5.gdb`. Names are a 
 
 | File | Role |
 | --- | --- |
-| `web/public/data/reaches.pmtiles` | Map geometry. ~90 MB tippecanoe MVT of `riverlines` with `LID = 0`, WGS84, z4–13. Feature id / property `nzsegment`. Also `StreamOrde`. In-lake REC2 chords (`LID > 0`) stay in the graph but are not drawn. Gitignored. Publish with the graph in GitHub Release tag `data`. |
-| `web/public/data/reaches.bin` | Compact graph. Magic `HWG1` v2: `nzsegment u32`, downstream `nzsegment u32` (0 = sink), `length_m f32`, then interned UTF-8 names. Reverse `up` index is built in the browser. 11,331 sinks. No unmapped `down` pointers in v5. Gitignored. Publish with the tiles in GitHub Release tag `data`. |
-| `web/public/data/names.json` | Search index. One row per official name: longest connected stretch, outlet `nzsegment`, stretch length in metres, WGS84 bbox of member envelopes. Gitignored. Publish with the graph and tiles in GitHub Release tag `data`. |
+| `web/public/data/nz/reaches.pmtiles` | Map geometry. ~90 MB tippecanoe MVT of `riverlines` with `LID = 0`, WGS84, z4–13. Feature id / property `id`. Also `StreamOrde`. In-lake REC2 chords (`LID > 0`) stay in the graph but are not drawn. Gitignored. Publish with the graph in GitHub Release tag `data`. |
+| `web/public/data/nz/reaches.bin` | Compact graph. Magic `HWG1` v3: `id u32`, downstream `id u32` (0 = sink), `length_m f32`, interned UTF-8 names, then inland sink ids (none for New Zealand). Reverse `up` index is built in the browser. Gitignored. Publish with the tiles in GitHub Release tag `data`. |
+| `web/public/data/nz/names.json` | Search index. One row per official name: longest connected stretch, outlet `nzsegment`, stretch length in metres, WGS84 bbox of member envelopes. Gitignored. Publish with the graph and tiles in GitHub Release tag `data`. |
 
-Rebuild: `PYTHONPATH=pipeline/src python3 -m headwaters_pipeline.export_graph` then `bash pipeline/scripts/build_tiles.sh`.
+Rebuild: `PYTHONPATH=pipeline/src python3 -m headwaters_pipeline.export_graph --country nz` then `bash pipeline/scripts/build_tiles.sh nz`.
 
 `NextDownID` is mapped HydroID → `nzsegment` in `export_graph.py`. Unmapped pointers stay as that HydroID so a walk can raise a gap. Do not invent edges.
 
@@ -52,7 +52,45 @@ Do not page the FeatureServer. Hub CSV is the archive.
 
 `RivName` is unofficial topo naming. Gazetteer wins where we have a documented overlay. Gazette 2011-ln7607: exact `RivName` **Hutt River** becomes **Te Awa Kairangi / Hutt River**. Eastern Hutt River and Western Hutt River are unchanged. Do not invent Māori names.
 
-Packed names live in `reaches.bin` (HWG1 v2 string table). Unnamed stays unnamed. Search uses `names.json`, rebuilt by the same `export_graph` run. One result per official name: the longest connected stretch. Shorter waterways that share a spelling are omitted. A stretch with no envelope is omitted because the map cannot fly to it.
+Packed names live in `reaches.bin` (HWG1 string table). Unnamed stays unnamed. Search uses `names.json`, rebuilt by the same `export_graph` run. One result per official name: the longest connected stretch. Shorter waterways that share a spelling are omitted. A stretch with no envelope is omitted because the map cannot fly to it.
+
+## Bureau of Meteorology Geofabric Surface Hydrology Network V3.3
+
+- **Version:** National V3.3
+- **Licence:** [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
+- **Product page:** https://www.bom.gov.au/water/geofabric/download.shtml
+- **FTP file:** `ftp://ftp.bom.gov.au/anon/home/geofabric/SH_Network_GDB_V3_3.zip` (about 1.5 GB)
+- **Local path:** `data/raw/SH_Network_GDB/SH_Network.gdb` (gitignored)
+- **Requested credit:** © Commonwealth of Australia (Bureau of Meteorology) 2022. Modified for Headwaters (reprojected, tiled, packed graph).
+
+### GDB inspect (2026-11-25)
+
+| Item | On disk |
+| --- | --- |
+| GDB name | `SH_Network.gdb` |
+| Streams | `AHGFNetworkStream`. 2,578,471 lines, GDA94 (`EPSG:4283`) |
+| Segment id | `HydroID`. `NextDownID` is the next stream's `HydroID`. Sink is `-1`. |
+| Length | `GeodesLen` (metres). No nulls in V3.3. |
+| Names | `Name` on the stream. 573,668 reaches with a non-blank name. Almost all names are stored in capitals (`MURRAY RIVER`). Eight mixed-case exceptions. Do not title-case. |
+| Draw filter | `AHGFFType = 1` (`NetworkFlowSegment`). Types 2 and 3 stay in the graph. |
+| Stream order | No `StreamOrde`. Tiles write `5` for `Hierarchy = Major`, `2` for Minor, `1` otherwise. |
+| Inland sinks | Terminal streams (`NextDownID` sink) whose `To_Node` is `AHGFNetworkNode` `AHGFFType = 5` and `DiffusType` is not `Coastal` or `Delta`. Murray mouth is `Delta`. |
+
+Search still keeps one result per spelling. Many Australian creeks share a name; only the longest stretch is shown. V3.3 has 573,668 named reaches and 22,208 unique `Name` values, so the index hides 551,460 named reaches that share a spelling.
+
+Inland sinks: 56,079 (terminus node `AHGFFType = 5`, `DiffusType` not Coastal or Delta).
+
+Rebuild: `PYTHONPATH=pipeline/src python3 -m headwaters_pipeline.export_graph --country au` then `bash pipeline/scripts/build_tiles.sh au`.
+
+Export (2026-11-25): about 4.3 minutes. `reaches.bin` 36,097,606 bytes (~34 MB; ~21 MB gzip). `names.json` 2.9 MB (~1.0 MB gzip), 22,208 rivers.
+
+### Product artefacts
+
+| File | Role |
+| --- | --- |
+| `web/public/data/au/reaches.pmtiles` | Map geometry. `AHGFFType = 1` only, WGS84, z2–13. Feature id / property `id`. Also `StreamOrde`. Gitignored. |
+| `web/public/data/au/reaches.bin` | Compact graph. HWG1 v3 of every `AHGFNetworkStream`. Gitignored. |
+| `web/public/data/au/names.json` | Search index. One row per Geofabric `Name`. Gitignored. |
 
 ## Not in this extract
 

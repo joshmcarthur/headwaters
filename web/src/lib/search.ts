@@ -1,3 +1,4 @@
+import { COUNTRIES } from "./countries.ts";
 import { copy, splitOfficialName } from "./copy.ts";
 
 export type RiverHit = {
@@ -7,16 +8,7 @@ export type RiverHit = {
   bbox: [number, number, number, number];
 };
 
-export const START_RIVERS = [
-  "Waikato River",
-  "Whanganui River",
-  "Rangitikei River",
-  "Manawatu River",
-  "Te Awa Kairangi / Hutt River",
-  "Waimakariri River",
-  "Waitaki River",
-  "Clutha River",
-] as const;
+export const START_RIVERS = COUNTRIES.nz.startRivers;
 
 const DEFAULT_LIMIT = 8;
 
@@ -104,7 +96,7 @@ function isHit(value: unknown): value is RiverHit {
 }
 
 export async function loadRiverIndex(
-  url: string = "/data/names.json",
+  url: string = COUNTRIES.nz.namesUrl,
 ): Promise<RiverHit[]> {
   const res = await fetch(url);
   if (!res.ok) throw new Error("names missing");
@@ -143,6 +135,7 @@ export function mountRiverSearch(opts: {
   startList: HTMLElement | null;
   onPick: (hit: RiverHit) => void;
   load?: () => Promise<RiverHit[]>;
+  startRivers?: readonly string[];
 }): RiverSearchHandle {
   let rivers: RiverHit[] = [];
   let hits: RiverHit[] = [];
@@ -214,8 +207,10 @@ export function mountRiverSearch(opts: {
 
   const fillStart = (): void => {
     if (!opts.startList) return;
-    const chosen = resolveNames(rivers, START_RIVERS);
+    const wrap = opts.startList.closest(".hw-start");
+    const chosen = resolveNames(rivers, opts.startRivers ?? START_RIVERS);
     opts.startList.replaceChildren();
+    if (wrap instanceof HTMLElement) wrap.hidden = chosen.length === 0;
     for (const hit of chosen) {
       const li = document.createElement("li");
       const btn = document.createElement("button");
@@ -272,6 +267,8 @@ export function mountRiverSearch(opts: {
       loaded = true;
       rivers = [];
       if (opts.startList) {
+        const wrap = opts.startList.closest(".hw-start");
+        if (wrap instanceof HTMLElement) wrap.hidden = false;
         opts.startList.replaceChildren();
         const li = document.createElement("li");
         li.textContent = copy.searchIndexFailed;
