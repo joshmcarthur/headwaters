@@ -1,20 +1,13 @@
 """Write a compact river graph from a country File Geodatabase.
 
-Binary layout (little-endian), file ``reaches.bin``:
+Binary layout (little-endian), file ``reaches.bin``, magic NUL-padded ``HWG`` (Headwaters graph):
 
-- magic ``HWG1`` (4 bytes)
-- version ``u16`` = 3
-- flags ``u16`` = 0
-- count ``u32``
-- ``count`` records of ``id u32``, ``down_id u32`` (0 = sink), ``length_m f32``
-- named_count ``u32``
-- string_bytes ``u32``
-- ``named_count`` of ``id u32``, ``str_offset u32``
-- UTF-8 names, interned, null-terminated
-- inland_count ``u32``
-- ``inland_count`` of sink ``id u32``
+- 64-byte header: count, build_id, section offsets
+- interned NUL-terminated names
+- id index (sorted pages of id, dfs_index, hld_index, subtree_size)
+- DFS records (24 bytes) then heavy-path records (24 bytes)
 
-Also writes ``names.json``: one object per official name with the
+Also writes ``names.bin`` (magic NUL-padded ``HWN``, Headwaters names): start-list hits and names grouped by folded first letter.
 downstream id of the longest connected stretch, stretch length
 in metres, and a WGS84 bbox of member envelopes.
 
@@ -33,11 +26,12 @@ from __future__ import annotations
 
 import argparse
 import csv
-import json
 import re
 import struct
 import subprocess
 import sys
+import unicodedata
+import zlib
 from pathlib import Path
 
 _csv_limit = sys.maxsize
@@ -58,8 +52,14 @@ from headwaters_pipeline.countries import (
     repo_root,
 )
 
-MAGIC = b"HWG1"
-VERSION = 3
+MAGIC = b"HWG\0"
+VERSION = 1
+HEADER_SIZE = 64
+RECORD_SIZE = 24
+PAGE_SIZE = 1024
+SINK_HLD = 0xFFFFFFFF
+NAME_NONE = 0xFFFF
+FLAG_INLAND = 1
 U32_MAX = 2**32 - 1
 
 # Exact RivName only. Eastern/Western Hutt River are unchanged (Gazette 2011-ln7607).
@@ -492,10 +492,70 @@ def longest_stretches(
     return sorted(rivers, key=lambda row: (str(row["name"]), int(row["id"])))
 
 
-def write_names_json(path: Path, rivers: list[Stretch]) -> None:
+HWN_MAGIC = b"HWN\0"
+HWN_HEADER = 24
+PREFIX_SLOTS = 27
+
+
+def _fold_name(value: str) -> str:
+    nfd = unicodedata.normalize("NFD", value)
+    return "".join(ch for ch in nfd if unicodedata.category(ch) != "Mn").lower()
+
+
+def _prefix_index(name: str) -> int:
+    ch = _fold_name(name).strip()[:1]
+    if "a" <= ch <= "z":
+        return ord(ch) - 97
+    return 26
+
+
+def _pack_hit(hit: Stretch) -> bytes:
+    name = str(hit["name"]).encode("utf-8")
+    bbox = hit["bbox"]
+    assert isinstance(bbox, list) and len(bbox) == 4
+    return struct.pack("<H", len(name)) + name + struct.pack(
+        "<If4f",
+        int(hit["id"]),
+        float(hit["metres"]),
+        float(bbox[0]),
+        float(bbox[1]),
+        float(bbox[2]),
+        float(bbox[3]),
+    )
+
+
+def write_names_bin(
+    path: Path,
+    rivers: list[Stretch],
+    start_names: tuple[str, ...],
+    build_id: int,
+) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as fh:
-        json.dump(rivers, fh, ensure_ascii=False, separators=(",", ":"))
+    by_name = {str(row["name"]): row for row in rivers}
+    start = [by_name[name] for name in start_names if name in by_name]
+    buckets: list[list[Stretch]] = [[] for _ in range(PREFIX_SLOTS)]
+    for row in rivers:
+        buckets[_prefix_index(str(row["name"]))].append(row)
+    start_bytes = b"".join(_pack_hit(row) for row in start)
+    bucket_bytes = [b"".join(_pack_hit(row) for row in bucket) for bucket in buckets]
+    prefix_dir_off = HWN_HEADER
+    start_off = prefix_dir_off + PREFIX_SLOTS * 8
+    cursor = start_off + len(start_bytes)
+    directory = bytearray(PREFIX_SLOTS * 8)
+    for i, blob in enumerate(bucket_bytes):
+        struct.pack_into("<II", directory, i * 8, cursor, len(blob))
+        cursor += len(blob)
+    header = struct.pack(
+        "<4sHHIIII",
+        HWN_MAGIC,
+        1,
+        0,
+        build_id,
+        len(start),
+        start_off,
+        prefix_dir_off,
+    )
+    path.write_bytes(header + bytes(directory) + start_bytes + b"".join(bucket_bytes))
 
 
 def write_binary(
@@ -503,44 +563,191 @@ def write_binary(
     records: list[tuple[int, int, float]],
     names: dict[int, str],
     inland: list[int] | None = None,
-) -> None:
+) -> int:
     path.parent.mkdir(parents=True, exist_ok=True)
+    data = pack_reaches(records, names, inland)
+    path.write_bytes(data)
+    return int.from_bytes(data[12:16], "little")
+
+
+def pack_reaches(
+    records: list[tuple[int, int, float]],
+    names: dict[int, str],
+    inland: list[int] | None = None,
+) -> bytes:
+    inland_set = {sid for sid in (inland or []) if sid}
+    id_set = {sid for sid, _down, _length in records}
+    by_id = {sid: (sid, down, length) for sid, down, length in records}
+    children: dict[int, list[int]] = {sid: [] for sid in id_set}
+    for sid, down, _length in records:
+        if down and down in id_set:
+            children[down].append(sid)
+    for kids in children.values():
+        kids.sort()
+
+    sinks = sorted(sid for sid, down, _length in records if not down or down not in id_set)
+    subtree: dict[int, int] = {}
+    dfs_order: list[int] = []
+
+    def walk(root: int) -> None:
+        if root in subtree:
+            return
+        stack = [root]
+        pre: list[int] = []
+        local: set[int] = set()
+        while stack:
+            sid = stack.pop()
+            if sid in local or sid in subtree:
+                continue
+            local.add(sid)
+            pre.append(sid)
+            kids = children.get(sid, [])
+            for child in reversed(kids):
+                stack.append(child)
+        dfs_order.extend(pre)
+        for sid in reversed(pre):
+            subtree[sid] = 1 + sum(
+                subtree[c] for c in children.get(sid, []) if c in subtree
+            )
+
+    for sid in sinks:
+        walk(sid)
+    for sid, _down, _length in records:
+        if sid not in subtree:
+            walk(sid)
+
+    heavy_child: dict[int, int] = {}
+    for sid in dfs_order:
+        kids = [k for k in children.get(sid, []) if k in subtree and k != sid]
+        if not kids:
+            continue
+        best = kids[0]
+        best_size = subtree[best]
+        for kid in kids[1:]:
+            sz = subtree[kid]
+            if sz > best_size or (sz == best_size and kid < best):
+                best = kid
+                best_size = sz
+        heavy_child[sid] = best
+    is_heavy = set(heavy_child.values())
+    path_heads = [sid for sid in dfs_order if sid not in is_heavy]
+    hld_order: list[int] = []
+    path_hi: dict[int, int] = {}
+    placed: set[int] = set()
+    for head in path_heads:
+        path: list[int] = []
+        cur: int | None = head
+        seen_path: set[int] = set()
+        while cur is not None and cur not in seen_path and cur not in placed:
+            seen_path.add(cur)
+            path.append(cur)
+            cur = heavy_child.get(cur)
+        path.reverse()
+        hld_order.extend(path)
+        placed.update(path)
+        hi = len(hld_order)
+        for sid in path:
+            path_hi[sid] = hi
+    for sid in dfs_order:
+        if sid in placed:
+            continue
+        hld_order.append(sid)
+        placed.add(sid)
+        path_hi[sid] = len(hld_order)
+
+    dfs_index = {sid: i for i, sid in enumerate(dfs_order)}
+    hld_index = {sid: i for i, sid in enumerate(hld_order)}
+
     unique: list[str] = []
     intern: dict[str, int] = {}
-    named: list[tuple[int, str]] = []
-    for nz, _down, _length in records:
-        label = names.get(nz)
+    for sid, _down, _length in records:
+        label = names.get(sid)
         if not label:
             continue
-        named.append((nz, label))
         if label not in intern:
             intern[label] = len(unique)
             unique.append(label)
-
     blobs = [(s.encode("utf-8") + b"\x00") for s in unique]
-    offsets: list[int] = []
-    cursor = 0
-    for blob in blobs:
-        offsets.append(cursor)
-        cursor += len(blob)
     string_table = b"".join(blobs)
 
-    header = struct.pack("<4sHHI", MAGIC, VERSION, 0, len(records))
-    rec_fmt = struct.Struct("<IIf")
-    name_hdr = struct.pack("<II", len(named), len(string_table))
-    entry_fmt = struct.Struct("<II")
-    with path.open("wb") as fh:
-        fh.write(header)
-        for nz, down, length in records:
-            fh.write(rec_fmt.pack(nz, down, length))
-        fh.write(name_hdr)
-        for nz, label in named:
-            fh.write(entry_fmt.pack(nz, offsets[intern[label]]))
-        fh.write(string_table)
-        inland_ids = sorted({sid for sid in (inland or []) if sid})
-        fh.write(struct.pack("<I", len(inland_ids)))
-        for sid in inland_ids:
-            fh.write(struct.pack("<I", sid))
+    count = len(records)
+    page_count = max(1, (count + PAGE_SIZE - 1) // PAGE_SIZE)
+    strings_off = HEADER_SIZE
+    index_root_off = strings_off + len(string_table)
+    index_root_len = page_count * 8
+    index_pages_off = index_root_off + index_root_len
+    index_pages_len = count * 16
+    dfs_off = index_pages_off + index_pages_len
+    hld_off = dfs_off + count * RECORD_SIZE
+
+    hash_parts = bytearray()
+    for sid, down, length in records:
+        hash_parts.extend(struct.pack("<IIf", sid, down, length))
+    hash_parts.extend(string_table)
+    build_id = zlib.crc32(hash_parts) & 0xFFFFFFFF
+
+    out = bytearray(hld_off + count * RECORD_SIZE)
+    header = struct.pack(
+        "<4sHHIIIIIIIIIIII",
+        MAGIC,
+        VERSION,
+        0,
+        count,
+        build_id,
+        strings_off,
+        len(string_table),
+        index_root_off,
+        index_root_len,
+        index_pages_off,
+        index_pages_len,
+        dfs_off,
+        hld_off,
+        PAGE_SIZE,
+        len(unique),
+    )
+    out[0:56] = header
+    out[strings_off : strings_off + len(string_table)] = string_table
+
+    sorted_ids = sorted(dfs_order)
+    for page in range(page_count):
+        start = page * PAGE_SIZE
+        if start >= len(sorted_ids):
+            break
+        page_off = index_pages_off + start * 16
+        struct.pack_into(
+            "<II",
+            out,
+            index_root_off + page * 8,
+            sorted_ids[start],
+            page_off,
+        )
+    for i, sid in enumerate(sorted_ids):
+        struct.pack_into(
+            "<IIII",
+            out,
+            index_pages_off + i * 16,
+            sid,
+            dfs_index[sid],
+            hld_index[sid],
+            subtree[sid],
+        )
+
+    rec_fmt = struct.Struct("<IfHHII")
+
+    def write_rec(off: int, sid: int, extra: int, extra2: int) -> None:
+        _sid, _down, length = by_id[sid]
+        label = names.get(sid)
+        name_idx = intern[label] if label else NAME_NONE
+        flags = FLAG_INLAND if sid in inland_set else 0
+        rec_fmt.pack_into(out, off, sid, length, name_idx, flags, extra, extra2)
+
+    for i, sid in enumerate(dfs_order):
+        write_rec(dfs_off + i * RECORD_SIZE, sid, subtree[sid], 0)
+    for i, sid in enumerate(hld_order):
+        _sid, down, _length = by_id[sid]
+        parent = hld_index[down] if down and down in hld_index else SINK_HLD
+        write_rec(hld_off + i * RECORD_SIZE, sid, path_hi[sid], parent)
+    return bytes(out)
 
 
 def main() -> None:
@@ -554,7 +761,7 @@ def main() -> None:
     csv_path = derived_csv_path(country, root)
     out_dir = output_dir(country, root)
     out_bin = out_dir / "reaches.bin"
-    out_names = out_dir / "names.json"
+    out_names = out_dir / "names.bin"
     if not gdb.exists():
         raise SystemExit(f"Missing {gdb}. See README.md.")
     if names_csv is not None and not names_csv.exists():
@@ -579,8 +786,8 @@ def main() -> None:
     print("Reading reach envelopes…")
     envelopes = load_envelopes(gdb, country, set(names))
     rivers = longest_stretches(records, names, envelopes)
-    write_binary(out_bin, records, names, inland)
-    write_names_json(out_names, rivers)
+    build_id = write_binary(out_bin, records, names, inland)
+    write_names_bin(out_names, rivers, country.start_rivers, build_id)
     print(f"Wrote {out_bin} ({out_bin.stat().st_size} bytes, {len(records)} reaches)")
     print(f"Wrote {out_names} ({len(rivers)} named rivers)")
     print(f"Inland sinks: {len(inland)}")

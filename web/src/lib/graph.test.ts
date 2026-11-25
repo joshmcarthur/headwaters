@@ -1,12 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  CompactGraph,
   collapseRoute,
   connectedNetwork,
-  encodeCompact,
   furthestSource,
   GapError,
-  loadCompactGraph,
   maxPathLength,
   riverGraphView,
   tapSelectedPoint,
@@ -14,6 +13,27 @@ import {
   walkUpstream,
   type RiverGraph,
 } from "./graph.ts";
+
+function compactOf(
+  rows: Array<{
+    id: number;
+    down: number;
+    length_m: number;
+    name?: string | null;
+    inland?: boolean;
+  }>,
+): CompactGraph {
+  const ids = new Uint32Array(rows.map((r) => r.id));
+  const downs = new Uint32Array(rows.map((r) => r.down));
+  const lengths = new Float32Array(rows.map((r) => r.length_m));
+  const names = new Map<number, string>();
+  const inland = new Set<number>();
+  for (const r of rows) {
+    if (r.name) names.set(r.id, r.name);
+    if (r.inland) inland.add(r.id);
+  }
+  return new CompactGraph(ids, downs, lengths, names, inland);
+}
 
 const fixture: RiverGraph = {
   outlet_nzsegment: 0,
@@ -63,14 +83,12 @@ test("connected network from D excludes A", () => {
 });
 
 test("compact graph walks match the fixture", () => {
-  const compact = loadCompactGraph(
-    encodeCompact([
-      { id: 1, down: 2, length_m: 100 },
-      { id: 2, down: 3, length_m: 200 },
-      { id: 3, down: 0, length_m: 300 },
-      { id: 4, down: 2, length_m: 50 },
-    ]),
-  );
+  const compact = compactOf([
+    { id: 1, down: 2, length_m: 100 },
+    { id: 2, down: 3, length_m: 200 },
+    { id: 3, down: 0, length_m: 300 },
+    { id: 4, down: 2, length_m: 50 },
+  ]);
   assert.deepEqual(walkDownstream(compact, 1), [1, 2, 3]);
   assert.deepEqual(new Set(walkUpstream(compact, 3)), new Set([1, 2, 3, 4]));
   const max = maxPathLength(compact, 2);
@@ -80,45 +98,24 @@ test("compact graph walks match the fixture", () => {
 });
 
 test("compact graph interned names round-trip", () => {
-  const compact = loadCompactGraph(
-    encodeCompact([
-      { id: 1, down: 2, length_m: 100, name: "Te Awa Kairangi / Hutt River" },
-      { id: 2, down: 0, length_m: 200, name: "Te Awa Kairangi / Hutt River" },
-      { id: 3, down: 2, length_m: 50, name: null },
-    ]),
-  );
+  const compact = compactOf([
+    { id: 1, down: 2, length_m: 100, name: "Te Awa Kairangi / Hutt River" },
+    { id: 2, down: 0, length_m: 200, name: "Te Awa Kairangi / Hutt River" },
+    { id: 3, down: 2, length_m: 50, name: null },
+  ]);
   assert.equal(compact.name(1), "Te Awa Kairangi / Hutt River");
   assert.equal(compact.name(2), "Te Awa Kairangi / Hutt River");
   assert.equal(compact.name(3), null);
   assert.equal(compact.isInlandSink(2), false);
 });
 
-test("compact graph v3 inland sinks round-trip", () => {
-  const compact = loadCompactGraph(
-    encodeCompact(
-      [
-        { id: 1, down: 2, length_m: 100 },
-        { id: 2, down: 0, length_m: 200 },
-      ],
-      { inland: [2] },
-    ),
-  );
+test("compact graph inland sinks", () => {
+  const compact = compactOf([
+    { id: 1, down: 2, length_m: 100 },
+    { id: 2, down: 0, length_m: 200, inland: true },
+  ]);
   assert.equal(compact.isInlandSink(2), true);
   assert.equal(compact.isInlandSink(1), false);
-});
-
-test("compact graph v2 files still load", () => {
-  const compact = loadCompactGraph(
-    encodeCompact(
-      [
-        { id: 1, down: 2, length_m: 100, name: "Creek" },
-        { id: 2, down: 0, length_m: 200 },
-      ],
-      { version: 2 },
-    ),
-  );
-  assert.equal(compact.name(1), "Creek");
-  assert.equal(compact.isInlandSink(2), false);
 });
 
 test("tap highlights keep catchment, longest upstream, and downstream distinct", () => {

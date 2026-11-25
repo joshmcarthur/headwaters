@@ -52,7 +52,7 @@ test("default country is New Zealand", () => {
 test("australia data paths sit under /data/au", () => {
   assert.equal(COUNTRIES.au.graphUrl, "/data/au/reaches.bin");
   assert.equal(COUNTRIES.au.tilesPath, "/data/au/reaches.pmtiles");
-  assert.equal(COUNTRIES.au.namesUrl, "/data/au/names.json");
+  assert.equal(COUNTRIES.au.namesUrl, "/data/au/names.bin");
   assert.equal(COUNTRIES.au.minZoom, 2);
   assert.match(COUNTRIES.au.attributionNetwork, /Bureau of Meteorology/);
   assert.match(COUNTRIES.au.attributionLicence, /by\/4\.0/);

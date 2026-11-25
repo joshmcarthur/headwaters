@@ -8,11 +8,11 @@ ARG PUBLIC_COUNTRIES=nz
 ENV PUBLIC_COUNTRIES=$PUBLIC_COUNTRIES
 RUN test -s web/public/data/nz/reaches.bin \
   && test -s web/public/data/nz/reaches.pmtiles \
-  && test -s web/public/data/nz/names.json
+  && test -s web/public/data/nz/names.bin
 RUN if echo ",${PUBLIC_COUNTRIES}," | grep -q ',au,'; then \
       test -s web/public/data/au/reaches.bin \
       && test -s web/public/data/au/reaches.pmtiles \
-      && test -s web/public/data/au/names.json; \
+      && test -s web/public/data/au/names.bin; \
     fi
 RUN cd web && npm run build
 

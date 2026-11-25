@@ -64,7 +64,7 @@ export const COUNTRIES: Record<CountryCode, Country> = {
     tileMaxZoom: 13,
     graphUrl: "/data/nz/reaches.bin",
     tilesPath: "/data/nz/reaches.pmtiles",
-    namesUrl: "/data/nz/names.json",
+    namesUrl: "/data/nz/names.bin",
     startRivers: [
       "Waikato River",
       "Whanganui River",
@@ -93,7 +93,7 @@ export const COUNTRIES: Record<CountryCode, Country> = {
     tileMaxZoom: 13,
     graphUrl: "/data/au/reaches.bin",
     tilesPath: "/data/au/reaches.pmtiles",
-    namesUrl: "/data/au/names.json",
+    namesUrl: "/data/au/names.bin",
     startRivers: [
       "SWAN RIVER",
       "ORD RIVER",
