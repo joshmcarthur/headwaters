@@ -367,9 +367,8 @@ export async function mountMap(): Promise<void> {
     history.replaceState(history.state, "", countryUrl(country.code));
   }
   applyAttribution(country);
-  const store = new GraphStore(country.graphUrl, {
-    cache: await openByteCache("hw-graph-v2"),
-  });
+  const cache = await openByteCache("hw-graph");
+  const store = new GraphStore(country.graphUrl, { cache });
   void store.warmup();
   const tilesUrl = `pmtiles://${window.location.origin}${country.tilesPath}`;
   let paint = readPaint();
@@ -741,8 +740,8 @@ export async function mountMap(): Promise<void> {
           list: searchList,
           startList: startList instanceof HTMLElement ? startList : null,
           startRivers: country.startRivers,
-          load: () => loadStartHits(country.namesUrl),
-          loadPrefix: (query) => loadPrefixHits(country.namesUrl, query),
+          load: () => loadStartHits(country.namesUrl, { cache }),
+          loadPrefix: (query) => loadPrefixHits(country.namesUrl, query, { cache }),
           onPick: (hit: RiverHit) => {
             void select(hit.id, "push").then((ok) => {
               if (!ok) return;

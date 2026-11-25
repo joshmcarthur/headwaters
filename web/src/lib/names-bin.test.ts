@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  encodeHwn1,
+  encodeNames,
   loadPrefixHits,
   loadStartHits,
-  parseHwn1Header,
+  parseNamesHeader,
   prefixHits,
   prefixLetter,
   startHits,
@@ -31,10 +31,10 @@ test("prefix letter folds macrons into a-z", () => {
   assert.equal(prefixLetter("Te Awa Kairangi / Hutt River"), "t");
 });
 
-test("HWN1 start block and prefix spans", () => {
-  const buf = encodeHwn1(rivers, ["Murray River"], 42);
-  const header = parseHwn1Header(buf);
-  assert.equal(header.magic, "HWN1");
+test("names start block and prefix spans", () => {
+  const buf = encodeNames(rivers, ["Murray River"], 42);
+  const header = parseNamesHeader(buf);
+  assert.equal(header.magic, "HWN\0");
   assert.equal(header.buildId, 42);
   assert.equal(header.startCount, 1);
   const start = startHits(buf, header);
@@ -49,15 +49,15 @@ test("HWN1 start block and prefix spans", () => {
 });
 
 test("loadStartHits and loadPrefixHits use Range", async () => {
-  const file = encodeHwn1(rivers, ["Murray River"], 7);
+  const file = encodeNames(rivers, ["Murray River"], 7);
   const fetchImpl: typeof fetch = async (_input, init) => {
     const range = new Headers(init?.headers).get("Range");
     const m = /^bytes=(\d+)-(\d+)$/.exec(range ?? "");
     if (!m) return new Response(file.slice(0));
     return new Response(file.slice(Number(m[1]), Number(m[2]) + 1), { status: 206 });
   };
-  const start = await loadStartHits("/data/nz/names.bin", fetchImpl);
+  const start = await loadStartHits("/data/nz/names.bin", { fetch: fetchImpl });
   assert.equal(start[0]?.name, "Murray River");
-  const m = await loadPrefixHits("/data/nz/names.bin", "Murray", fetchImpl);
+  const m = await loadPrefixHits("/data/nz/names.bin", "Murray", { fetch: fetchImpl });
   assert.equal(m[0]?.id, 10);
 });

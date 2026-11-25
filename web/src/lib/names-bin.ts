@@ -1,16 +1,23 @@
 import type { RiverHit } from "./search.ts";
+import { fetchRange, memoryByteCache, type ByteCache } from "./range-cache.ts";
 
-export const HWN1_MAGIC = "HWN1";
-export const HWN1_HEADER = 24;
+export const MAGIC = "HWN\0";
+export const HEADER = 24;
 export const PREFIX_SLOTS = 27;
+const PREFIX_BLOCK = HEADER + PREFIX_SLOTS * 8;
 
-export type Hwn1Header = {
+export type NamesHeader = {
   magic: string;
   version: number;
   buildId: number;
   startCount: number;
   startOff: number;
   prefixDirOff: number;
+};
+
+export type NamesLoadOpts = {
+  fetch?: typeof fetch;
+  cache?: ByteCache;
 };
 
 function fold(value: string): string {
@@ -37,11 +44,11 @@ function magicOf(view: DataView): string {
   );
 }
 
-export function parseHwn1Header(buffer: ArrayBuffer): Hwn1Header {
-  if (buffer.byteLength < HWN1_HEADER) throw new Error("names file is too small");
+export function parseNamesHeader(buffer: ArrayBuffer): NamesHeader {
+  if (buffer.byteLength < HEADER) throw new Error("names file is too small");
   const view = new DataView(buffer);
   const magic = magicOf(view);
-  if (magic !== HWN1_MAGIC) throw new Error("names file is not HWN1");
+  if (magic !== MAGIC) throw new Error("names file has the wrong magic");
   return {
     magic,
     version: view.getUint16(4, true),
@@ -111,13 +118,13 @@ function writeHits(hits: RiverHit[]): Uint8Array {
   return out;
 }
 
-export function startHits(buffer: ArrayBuffer, header: Hwn1Header): RiverHit[] {
+export function startHits(buffer: ArrayBuffer, header: NamesHeader): RiverHit[] {
   return readHits(buffer, header.startOff, buffer.byteLength, header.startCount);
 }
 
 export function prefixHits(
   buffer: ArrayBuffer,
-  header: Hwn1Header,
+  header: NamesHeader,
   letter: string,
 ): RiverHit[] {
   const view = new DataView(buffer);
@@ -128,7 +135,7 @@ export function prefixHits(
   return readHits(buffer, off, off + len);
 }
 
-export function encodeHwn1(
+export function encodeNames(
   rivers: RiverHit[],
   startNames: readonly string[],
   buildId: number,
@@ -145,7 +152,7 @@ export function encodeHwn1(
   }
   const startBytes = writeHits(start);
   const bucketBytes = buckets.map(writeHits);
-  const prefixDirOff = HWN1_HEADER;
+  const prefixDirOff = HEADER;
   const startOff = prefixDirOff + PREFIX_SLOTS * 8;
   let cursor = startOff + startBytes.length;
   const dir = new ArrayBuffer(PREFIX_SLOTS * 8);
@@ -160,7 +167,7 @@ export function encodeHwn1(
   view.setUint8(0, 0x48);
   view.setUint8(1, 0x57);
   view.setUint8(2, 0x4e);
-  view.setUint8(3, 0x31);
+  view.setUint8(3, 0x00);
   view.setUint16(4, 1, true);
   view.setUint16(6, 0, true);
   view.setUint32(8, buildId, true);
@@ -177,46 +184,46 @@ export function encodeHwn1(
   return buf;
 }
 
-const nativeFetch: typeof fetch = (input, init) => fetch(input, init);
-
 export async function loadStartHits(
   url: string,
-  fetchImpl: typeof fetch = nativeFetch,
+  opts: NamesLoadOpts = {},
 ): Promise<RiverHit[]> {
-  const head = await fetchImpl(url, {
-    headers: { Range: `bytes=0-${HWN1_HEADER - 1}` },
-    cache: "reload",
+  const cache = opts.cache ?? memoryByteCache();
+  const head = await fetchRange(url, 0, PREFIX_BLOCK, {
+    fetch: opts.fetch,
+    cache,
+    bypassCache: true,
   });
-  if (!head.ok && head.status !== 206) throw new Error("names missing");
-  const header = parseHwn1Header(await head.arrayBuffer());
-  const res = await fetchImpl(url, {
-    headers: { Range: `bytes=${header.startOff}-${header.startOff + 8191}` },
+  const header = parseNamesHeader(head);
+  const startEnd = new DataView(head, header.prefixDirOff).getUint32(0, true);
+  if (startEnd <= header.startOff) return [];
+  const body = await fetchRange(url, header.startOff, startEnd, {
+    fetch: opts.fetch,
+    cache,
   });
-  if (!res.ok && res.status !== 206) throw new Error("names missing");
-  const body = await res.arrayBuffer();
   return readHits(body, 0, body.byteLength, header.startCount);
 }
 
 export async function loadPrefixHits(
   url: string,
   letter: string,
-  fetchImpl: typeof fetch = nativeFetch,
+  opts: NamesLoadOpts = {},
 ): Promise<RiverHit[]> {
-  const head = await fetchImpl(url, {
-    headers: { Range: `bytes=0-${HWN1_HEADER + PREFIX_SLOTS * 8 - 1}` },
+  const cache = opts.cache ?? memoryByteCache();
+  const head = await fetchRange(url, 0, PREFIX_BLOCK, {
+    fetch: opts.fetch,
+    cache,
+    bypassCache: true,
   });
-  if (!head.ok && head.status !== 206) throw new Error("names missing");
-  const prefixBlock = await head.arrayBuffer();
-  const header = parseHwn1Header(prefixBlock);
+  const header = parseNamesHeader(head);
   const slot = prefixIndex(prefixLetter(letter));
-  const dirView = new DataView(prefixBlock, header.prefixDirOff);
+  const dirView = new DataView(head, header.prefixDirOff);
   const off = dirView.getUint32(slot * 8, true);
   const len = dirView.getUint32(slot * 8 + 4, true);
   if (len === 0) return [];
-  const res = await fetchImpl(url, {
-    headers: { Range: `bytes=${off}-${off + len - 1}` },
+  const body = await fetchRange(url, off, off + len, {
+    fetch: opts.fetch,
+    cache,
   });
-  if (!res.ok && res.status !== 206) throw new Error("names missing");
-  const body = await res.arrayBuffer();
   return readHits(body, 0, body.byteLength);
 }

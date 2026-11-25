@@ -62,9 +62,9 @@ bash pipeline/scripts/build_tiles.sh au
 
 Writes:
 
-- `web/public/data/{nz,au}/reaches.bin` — HWG2 packed graph (DFS + heavy-path records; the browser range-requests a tap’s slice)
+- `web/public/data/{nz,au}/reaches.bin` — packed graph (DFS + heavy-path records; the browser range-requests a tap’s slice)
 - `web/public/data/{nz,au}/reaches.pmtiles` — MVT of drawn reaches (feature id / property `id`, plus `StreamOrde`)
-- `web/public/data/{nz,au}/names.bin` — HWN1 search index (start list + names grouped by first letter)
+- `web/public/data/{nz,au}/names.bin` — search index (start list + names grouped by first letter)
 
 CSV and other intermediates stay in `data/derived/` (gitignored). A Hutt-only GeoJSON clip still exists as `pipeline/src/headwaters_pipeline/clip.py` for local debug. Do not serve it.
 
@@ -112,7 +112,7 @@ gh release create data \
   web/public/data/au/reaches.pmtiles#au-reaches.pmtiles \
   web/public/data/au/names.bin#au-names.bin \
   --title "River data" \
-  --notes "NZ REC2 v5 and AU Geofabric V3.3 HWG2 graph, PMTiles, and HWN1 name index. Rebuild with export_graph --country then pipeline/scripts/build_tiles.sh."
+  --notes "NZ REC2 v5 and AU Geofabric V3.3 packed graph, PMTiles, and name index. Rebuild with export_graph --country then pipeline/scripts/build_tiles.sh."
 ```
 
 After a graph or tile rebuild, upload both files so they stay in lockstep:

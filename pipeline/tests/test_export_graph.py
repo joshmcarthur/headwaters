@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 
 from headwaters_pipeline.countries import get_country
@@ -9,6 +11,7 @@ from headwaters_pipeline.export_graph import (
     load_names_from_export,
     longest_stretches,
     official_name,
+    pack_reaches,
     records_from_rows,
     validate_ids,
     write_binary,
@@ -153,7 +156,7 @@ def test_inland_sinks_are_terminus_nodes_without_coastal_diffus() -> None:
     assert inland_stream_ids(sinks, nodes) == [20]
 
 
-def test_write_binary_hwg2_round_trip(tmp_path) -> None:
+def test_write_binary_reaches_round_trip(tmp_path) -> None:
     path = tmp_path / "reaches.bin"
     write_binary(
         path,
@@ -162,7 +165,7 @@ def test_write_binary_hwg2_round_trip(tmp_path) -> None:
         inland=[2],
     )
     data = path.read_bytes()
-    assert data[:4] == b"HWG2"
+    assert data[:4] == b"HWG\0"
     count = int.from_bytes(data[8:12], "little")
     assert count == 3
     index_pages_off = int.from_bytes(data[32:36], "little")
@@ -173,22 +176,22 @@ def test_write_binary_hwg2_round_trip(tmp_path) -> None:
     assert subtree == 1
 
 
-def test_write_binary_hwg2_survives_a_deep_chain(tmp_path) -> None:
+def test_write_binary_reaches_survives_a_deep_chain(tmp_path) -> None:
     path = tmp_path / "reaches.bin"
     n = 1200
     records = [(i, i + 1 if i < n else 0, 1.0) for i in range(1, n + 1)]
     records[-1] = (n, 0, 1.0)
     write_binary(path, records, {}, inland=[n])
     data = path.read_bytes()
-    assert data[:4] == b"HWG2"
+    assert data[:4] == b"HWG\0"
     assert int.from_bytes(data[8:12], "little") == n
 
 
-def test_write_binary_hwg2_survives_a_down_cycle(tmp_path) -> None:
+def test_write_binary_reaches_survives_a_down_cycle(tmp_path) -> None:
     path = tmp_path / "reaches.bin"
     write_binary(path, [(1, 2, 1.0), (2, 1, 1.0), (3, 0, 1.0)], {})
     data = path.read_bytes()
-    assert data[:4] == b"HWG2"
+    assert data[:4] == b"HWG\0"
     assert int.from_bytes(data[8:12], "little") == 3
 
 
@@ -210,7 +213,7 @@ def test_write_names_bin_start_and_prefix(tmp_path) -> None:
     ]
     write_names_bin(path, rivers, ("Murray River",), 42)
     data = path.read_bytes()
-    assert data[:4] == b"HWN1"
+    assert data[:4] == b"HWN\0"
     build = int.from_bytes(data[8:12], "little")
     assert build == 42
     start_count = int.from_bytes(data[12:16], "little")
@@ -219,3 +222,19 @@ def test_write_names_bin_start_and_prefix(tmp_path) -> None:
     name_len = int.from_bytes(data[start_off : start_off + 2], "little")
     name = data[start_off + 2 : start_off + 2 + name_len].decode("utf-8")
     assert name == "Murray River"
+
+
+WEB_FIXTURES = Path(__file__).resolve().parents[2] / "web" / "src" / "lib" / "fixtures"
+CREEK = [(1, 2, 10.0), (2, 3, 20.0), (3, 0, 30.0), (4, 2, 5.0)]
+CREEK_LONG = [(1, 2, 10.0), (2, 3, 20.0), (3, 0, 30.0), (4, 2, 99.0)]
+CREEK_NAMES = {1: "Creek", 2: "Creek"}
+CREEK_INLAND = [3]
+
+
+def test_web_reaches_fixtures_match_python_packer() -> None:
+    assert (WEB_FIXTURES / "creek.bin").read_bytes() == pack_reaches(
+        CREEK, CREEK_NAMES, CREEK_INLAND
+    )
+    assert (WEB_FIXTURES / "creek-long.bin").read_bytes() == pack_reaches(
+        CREEK_LONG, CREEK_NAMES, CREEK_INLAND
+    )

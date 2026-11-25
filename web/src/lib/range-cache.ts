@@ -85,7 +85,7 @@ export async function fetchRange(
         cache: "no-store",
       });
       if (!res.ok && res.status !== 206) {
-        throw new Error(`Graph range ${res.status}`);
+        throw new Error(`Range ${res.status}`);
       }
       block = await res.arrayBuffer();
       await opts.cache.set(key, block);
@@ -96,7 +96,7 @@ export async function fetchRange(
   const out = joined.slice(start - pageStart, endExclusive - pageStart);
   const want = endExclusive - start;
   if (out.byteLength < want) {
-    throw new Error(`Graph range short: got ${out.byteLength} want ${want}`);
+    throw new Error(`Range short: got ${out.byteLength} want ${want}`);
   }
   return out;
 }

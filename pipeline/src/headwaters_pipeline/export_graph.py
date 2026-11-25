@@ -1,13 +1,13 @@
 """Write a compact river graph from a country File Geodatabase.
 
-Binary layout (little-endian), file ``reaches.bin``, magic ``HWG2``:
+Binary layout (little-endian), file ``reaches.bin``, magic NUL-padded ``HWG`` (Headwaters graph):
 
 - 64-byte header: count, build_id, section offsets
 - interned NUL-terminated names
 - id index (sorted pages of id, dfs_index, hld_index, subtree_size)
 - DFS records (24 bytes) then heavy-path records (24 bytes)
 
-Also writes ``names.bin`` (HWN1): start-list hits and names grouped by folded first letter.
+Also writes ``names.bin`` (magic NUL-padded ``HWN``, Headwaters names): start-list hits and names grouped by folded first letter.
 downstream id of the longest connected stretch, stretch length
 in metres, and a WGS84 bbox of member envelopes.
 
@@ -26,7 +26,6 @@ from __future__ import annotations
 
 import argparse
 import csv
-import json
 import re
 import struct
 import subprocess
@@ -53,7 +52,7 @@ from headwaters_pipeline.countries import (
     repo_root,
 )
 
-MAGIC = b"HWG2"
+MAGIC = b"HWG\0"
 VERSION = 1
 HEADER_SIZE = 64
 RECORD_SIZE = 24
@@ -493,14 +492,8 @@ def longest_stretches(
     return sorted(rivers, key=lambda row: (str(row["name"]), int(row["id"])))
 
 
-def write_names_json(path: Path, rivers: list[Stretch]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as fh:
-        json.dump(rivers, fh, ensure_ascii=False, separators=(",", ":"))
-
-
-HWN1_MAGIC = b"HWN1"
-HWN1_HEADER = 24
+HWN_MAGIC = b"HWN\0"
+HWN_HEADER = 24
 PREFIX_SLOTS = 27
 
 
@@ -545,7 +538,7 @@ def write_names_bin(
         buckets[_prefix_index(str(row["name"]))].append(row)
     start_bytes = b"".join(_pack_hit(row) for row in start)
     bucket_bytes = [b"".join(_pack_hit(row) for row in bucket) for bucket in buckets]
-    prefix_dir_off = HWN1_HEADER
+    prefix_dir_off = HWN_HEADER
     start_off = prefix_dir_off + PREFIX_SLOTS * 8
     cursor = start_off + len(start_bytes)
     directory = bytearray(PREFIX_SLOTS * 8)
@@ -554,7 +547,7 @@ def write_names_bin(
         cursor += len(blob)
     header = struct.pack(
         "<4sHHIIII",
-        HWN1_MAGIC,
+        HWN_MAGIC,
         1,
         0,
         build_id,
@@ -572,12 +565,12 @@ def write_binary(
     inland: list[int] | None = None,
 ) -> int:
     path.parent.mkdir(parents=True, exist_ok=True)
-    data = pack_hwg2(records, names, inland)
+    data = pack_reaches(records, names, inland)
     path.write_bytes(data)
     return int.from_bytes(data[12:16], "little")
 
 
-def pack_hwg2(
+def pack_reaches(
     records: list[tuple[int, int, float]],
     names: dict[int, str],
     inland: list[int] | None = None,

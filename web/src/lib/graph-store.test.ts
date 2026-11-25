@@ -1,15 +1,15 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { walkDownstream } from "./graph.ts";
 import { GraphStore, type ByteCache } from "./graph-store.ts";
-import { encodeHwg2 } from "./hwg2.ts";
 
-const records = [
-  { id: 1, down: 2, length_m: 10, name: "Creek" },
-  { id: 2, down: 3, length_m: 20, name: "Creek" },
-  { id: 3, down: 0, length_m: 30, inland: true },
-  { id: 4, down: 2, length_m: 5 },
-];
+function fixture(name: string): ArrayBuffer {
+  const buf = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "fixtures", name));
+  return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+}
 
 function memCache(): ByteCache {
   const map = new Map<string, ArrayBuffer>();
@@ -54,7 +54,7 @@ function rangeFetch(file: ArrayBuffer): {
 }
 
 test("loadById fetches ranges then serves the second tap from cache", async () => {
-  const buf = encodeHwg2(records);
+  const buf = fixture("creek.bin");
   const { fetch, ranges } = rangeFetch(buf);
   const cache = memCache();
   const store = new GraphStore("/data/nz/reaches.bin", { fetch, cache });
@@ -69,7 +69,7 @@ test("loadById fetches ranges then serves the second tap from cache", async () =
 });
 
 test("warmup still loads names when HTTP cache repeats a 64-byte header", async () => {
-  const buf = encodeHwg2(records);
+  const buf = fixture("creek.bin");
   const fetchImpl: typeof fetch = async (input, init) => {
     const url = String(input);
     const range = new Headers(init?.headers).get("Range") ?? "";
@@ -95,17 +95,17 @@ test("warmup still loads names when HTTP cache repeats a 64-byte header", async 
 });
 
 test("warmup overwrites a truncated first page in the cache", async () => {
-  const buf = encodeHwg2(records);
+  const buf = fixture("creek.bin");
   const { fetch } = rangeFetch(buf);
   const cache = memCache();
-  await cache.set("/data/nz/reaches.bin#0-16384", buf.slice(0, 64));
+  await cache.set("/data/nz/reaches.bin|0", buf.slice(0, 64));
   const store = new GraphStore("/data/nz/reaches.bin", { fetch, cache });
   const g = await store.loadById(4);
   assert.equal(g.name(2), "Creek");
 });
 
 test("warmup does not reuse a 64-byte header as the first data page", async () => {
-  const buf = encodeHwg2(records);
+  const buf = fixture("creek.bin");
   let headerBody: ArrayBuffer | null = null;
   const fetchImpl: typeof fetch = async (_input, init) => {
     const range = new Headers(init?.headers).get("Range") ?? "";
@@ -131,7 +131,7 @@ test("warmup does not reuse a 64-byte header as the first data page", async () =
 });
 
 test("loadById still works when fetch rejects a non-Window this", async () => {
-  const buf = encodeHwg2(records);
+  const buf = fixture("creek.bin");
   const { fetch: inner } = rangeFetch(buf);
   const fetchImpl: typeof fetch = function (this: unknown, input, init) {
     if (this !== undefined && this !== globalThis) {
@@ -148,11 +148,8 @@ test("loadById still works when fetch rejects a non-Window this", async () => {
 });
 
 test("warmup with a new build_id drops stale pages", async () => {
-  const buf1 = encodeHwg2(records, 1);
-  const buf2 = encodeHwg2(
-    records.map((r) => (r.id === 4 ? { ...r, length_m: 99 } : r)),
-    2,
-  );
+  const buf1 = fixture("creek.bin");
+  const buf2 = fixture("creek-long.bin");
   const cache = memCache();
   const a = rangeFetch(buf1);
   const store = new GraphStore("/data/nz/reaches.bin", { fetch: a.fetch, cache });
