@@ -17,7 +17,7 @@ import {
   collapseRoute,
   loadCompactGraph,
   maxPathLength,
-  tapHighlights,
+  tapSelectedPoint,
   type GraphView,
   type RouteRun,
   type SegmentId,
@@ -685,7 +685,7 @@ export async function mountMap(): Promise<void> {
       catchment: [] as SegmentId[],
     };
     try {
-      marks = tapHighlights(graph, id);
+      marks = tapSelectedPoint(graph, id);
     } catch (err) {
       if (!(err instanceof GapError)) throw err;
       gap = true;

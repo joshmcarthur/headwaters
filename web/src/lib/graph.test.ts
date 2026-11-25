@@ -9,7 +9,7 @@ import {
   loadCompactGraph,
   maxPathLength,
   riverGraphView,
-  tapHighlights,
+  tapSelectedPoint,
   walkDownstream,
   walkUpstream,
   type RiverGraph,
@@ -122,11 +122,11 @@ test("compact graph v2 files still load", () => {
 });
 
 test("tap highlights keep catchment, longest upstream, and downstream distinct", () => {
-  const marks = tapHighlights(view, "B");
+  const marks = tapSelectedPoint(view, "B");
   assert.equal(marks.selected, "B");
   assert.deepEqual(marks.downstream, ["C"]);
   assert.deepEqual(marks.main, ["A"]);
-  assert.deepEqual(new Set(marks.catchment), new Set(["A", "C", "D"]));
+  assert.deepEqual(new Set(marks.catchment), new Set(["A", "D"]));
 });
 
 const basin: RiverGraph = {
@@ -144,20 +144,20 @@ const basin: RiverGraph = {
 
 const basinView = riverGraphView(basin);
 
-test("tap catchment is the mouth basin, including tributaries that join below the click", () => {
-  const marks = tapHighlights(basinView, "B");
+test("selected-point tap on B excludes tributaries that join below the click", () => {
+  const marks = tapSelectedPoint(basinView, "B");
   assert.equal(marks.selected, "B");
   assert.deepEqual(marks.downstream, ["C", "E"]);
   assert.deepEqual(marks.main, ["A"]);
-  assert.deepEqual(new Set(marks.catchment), new Set(["A", "C", "D", "E", "F"]));
+  assert.deepEqual(new Set(marks.catchment), new Set(["A", "D"]));
 });
 
-test("tap on a side tributary still paints the whole mouth basin", () => {
-  const marks = tapHighlights(basinView, "D");
+test("selected-point tap on a side tributary does not paint the rest of the basin", () => {
+  const marks = tapSelectedPoint(basinView, "D");
   assert.equal(marks.selected, "D");
   assert.deepEqual(marks.downstream, ["B", "C", "E"]);
   assert.deepEqual(marks.main, []);
-  assert.deepEqual(new Set(marks.catchment), new Set(["A", "B", "C", "E", "F"]));
+  assert.deepEqual(marks.catchment, []);
 });
 
 const named: RiverGraph = {
