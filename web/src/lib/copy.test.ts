@@ -40,6 +40,13 @@ test("country switch names New Zealand and Australia", () => {
   assert.equal(copy.countryGroup, "Country");
   assert.equal(copy.countryNz, "New Zealand");
   assert.equal(copy.countryAu, "Australia");
+  assert.equal(copy.countryNzShort, "NZ");
+  assert.equal(copy.countryAuShort, "AU");
+});
+
+test("sheet handle names expand and shrink", () => {
+  assert.equal(copy.sheetExpand, "Expand panel");
+  assert.equal(copy.sheetShrink, "Shrink panel");
 });
 
 test("3D control is a short pressed label", () => {
