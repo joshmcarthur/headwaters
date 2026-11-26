@@ -3,8 +3,9 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import "../../../design/Headwaters/tokens.css";
 import "../../../design/Headwaters/components/bundle.css";
 import "../styles/app.css";
+import { bottomSheetTemplate } from "pure-web-bottom-sheet/ssr";
 import { copy } from "../lib/copy";
-import { countryLabel, enabledCountries } from "../lib/countries";
+import { countryLabel, countryShortLabel, enabledCountries } from "../lib/countries";
 
 const shownCountries = enabledCountries();
 ---
@@ -92,7 +93,10 @@ const shownCountries = enabledCountries();
                 {shownCountries.map((code) => (
                   <label class="hw-country__opt">
                     <input type="radio" name="country" value={code} />
-                    {countryLabel(code)}
+                    <span class="hw-country__full">{countryLabel(code)}</span>
+                    <span class="hw-country__short" aria-hidden="true">
+                      {countryShortLabel(code)}
+                    </span>
                   </label>
                 ))}
               </div>
@@ -143,6 +147,7 @@ const shownCountries = enabledCountries();
       </div>
 
       <aside class="hw-dock">
+        <div id="dock-panels">
         <section id="empty-panel" class="hw-panel hw-empty-panel">
           <div class="hw-empty" style="border: 0; padding: 0; text-align: left; background: transparent">
             <h2>{copy.emptyTitle}</h2>
@@ -202,7 +207,28 @@ const shownCountries = enabledCountries();
           </details>
           <p id="gap-note" class="body-sm" hidden>{copy.gap}</p>
         </section>
+        </div>
       </aside>
+
+      <bottom-sheet id="river-sheet" class="hw-sheet" nested-scroll>
+        <template shadowrootmode="open">
+          <Fragment set:html={bottomSheetTemplate} />
+        </template>
+        <div slot="snap" class="top" style="--snap: 85vh"></div>
+        <div slot="snap" style="--snap: 45vh"></div>
+        <div
+          slot="snap"
+          class="initial"
+          style="--snap: calc(var(--sheet-peek, 96px) + env(safe-area-inset-bottom, 0px))"
+        ></div>
+        <button
+          slot="header"
+          type="button"
+          class="hw-sheet__handle"
+          id="sheet-cycle"
+          aria-label={copy.sheetExpand}
+        ></button>
+      </bottom-sheet>
 
       <div class="hw-attr hw-attr-wrap">
         <span><a href={copy.attributionCreatedHref}>{copy.attributionCreated}</a></span>

@@ -27,6 +27,11 @@ html[data-theme="dusk"] {
 
 .hw-country {
   flex: none;
+  white-space: nowrap;
+}
+
+.hw-country__short {
+  display: none;
 }
 
 .hw-country__opt {
@@ -96,7 +101,30 @@ html[data-theme="dusk"] {
   justify-content: flex-start;
 }
 
+@media (max-width: 720px) {
+  .hw-country__full {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .hw-country__short {
+    display: inline;
+  }
+
+  .hw-country__opt {
+    padding: 0 var(--space-3, 12px);
+  }
+}
+
 @media (max-width: 640px) {
+  .hw-mast {
+    gap: var(--space-3, 12px);
+  }
+
   .hw-mast__tag {
     display: none;
   }
@@ -175,16 +203,55 @@ html[data-theme="dusk"] {
   max-width: 42ch;
 }
 
+bottom-sheet.hw-sheet {
+  display: none;
+  z-index: var(--z-sheet, 30);
+  --sheet-background: var(--surface-200, #fcfaf4);
+  --sheet-border-radius: var(--radius-xl, 16px);
+  --sheet-max-height: 85vh;
+}
+
+.hw-sheet::part(handle) {
+  display: none;
+}
+
+.hw-sheet::part(content) {
+  padding: 0;
+  min-height: 0;
+}
+
+.hw-sheet::part(sheet) {
+  box-shadow: var(--shadow-sheet);
+}
+
+.hw-sheet .hw-panel {
+  width: 100%;
+  max-width: none;
+  box-shadow: none;
+  background: transparent;
+  border-radius: 0;
+  padding: var(--space-4, 16px);
+}
+
 @media (max-width: 720px) {
   .hw-app {
     --dock-offset: var(--sheet-peek, 96px);
   }
 
-  .hw-dock {
+  bottom-sheet.hw-sheet {
+    display: block;
+  }
+
+  .hw-dock:has(#dock-panels) {
     left: 0;
     right: 0;
     bottom: 0;
-    max-height: none;
+    max-height: calc(var(--sheet-peek, 96px) + env(safe-area-inset-bottom, 0px));
+    overflow: hidden;
+  }
+
+  .hw-dock:not(:has(#dock-panels)) {
+    display: none;
   }
 
   .hw-dock .hw-panel {
@@ -277,34 +344,6 @@ html[data-theme="dusk"] {
 .hw-empty-panel {
   width: var(--panel-width, 360px);
   max-width: 100%;
-}
-
-.hw-dock--expanded {
-  height: min(85vh, calc(100dvh - var(--space-16, 64px) - var(--space-8, 32px)));
-  max-height: min(85vh, calc(100dvh - var(--space-16, 64px) - var(--space-8, 32px)));
-  display: flex;
-  flex-direction: column;
-}
-
-.hw-dock--expanded .hw-panel {
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.hw-dock--expanded #source-to-sea {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border-bottom: 0;
-}
-
-.hw-dock--expanded #source-to-sea .hw-disc__body {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
 }
 
 #source-to-sea[hidden] {
