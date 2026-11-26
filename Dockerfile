@@ -4,7 +4,7 @@ COPY web/package.json web/package-lock.json web/
 RUN cd web && npm ci
 COPY web web
 COPY design design
-ARG PUBLIC_COUNTRIES=nz
+ARG PUBLIC_COUNTRIES=nz,au
 ENV PUBLIC_COUNTRIES=$PUBLIC_COUNTRIES
 RUN test -s web/public/data/nz/reaches.bin \
   && test -s web/public/data/nz/reaches.pmtiles \
