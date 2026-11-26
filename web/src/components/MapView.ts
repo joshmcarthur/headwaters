@@ -5,6 +5,7 @@ import {
   applyAttribution,
   countryFromLocation,
   countryUrl,
+  mountCountrySwitch,
   persistCountry,
   readStoredCountry,
 } from "../lib/countries.ts";
@@ -367,6 +368,10 @@ export async function mountMap(): Promise<void> {
     history.replaceState(history.state, "", countryUrl(country.code));
   }
   applyAttribution(country);
+  const countrySwitch = document.querySelector("#country-switch");
+  if (countrySwitch instanceof HTMLElement) {
+    mountCountrySwitch(countrySwitch, country.code);
+  }
   const cache = await openByteCache("hw-graph");
   const store = new GraphStore(country.graphUrl, { cache });
   void store.warmup();
