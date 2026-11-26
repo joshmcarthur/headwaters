@@ -80,7 +80,7 @@ npm run dev
 
 Open the URL Astro prints (usually http://localhost:4321/). The map opens on Aotearoa. Click any waterway, or search for one by name.
 
-The header country control is off unless `PUBLIC_COUNTRIES` includes more than one country. Default is `nz`. To show Australia as well:
+The production image ships New Zealand and Australia. The header country control appears when `PUBLIC_COUNTRIES` lists more than one country. Local `npm run dev` defaults to New Zealand only, so you can run without the Australia files. To show both locally:
 
 ```bash
 PUBLIC_COUNTRIES=nz,au npm run dev
@@ -97,35 +97,38 @@ cd web && npm test
 
 ## Deploy
 
-The site is a static nginx image. GitHub Actions bakes the New Zealand graph, tiles, and name index into that image from a Release, then pushes GHCR. Australia files on that Release are optional until `PUBLIC_COUNTRIES` includes `au`.
+The site is a static nginx image. GitHub Actions bakes the New Zealand and Australia graph, tiles, and name index into that image from a Release, then pushes GHCR. The image build fails if any of the six files is missing.
 
 ### Data release
 
 From a machine that has the rebuilt files (after the GitHub repo exists):
 
+`gh release upload` uses each file's basename as the asset name. Copy into prefixed names first; do not use `path#name` (that sets the display label, not the asset name).
+
 ```bash
+stage=$(mktemp -d)
+cp web/public/data/nz/reaches.bin "$stage/nz-reaches.bin"
+cp web/public/data/nz/reaches.pmtiles "$stage/nz-reaches.pmtiles"
+cp web/public/data/nz/names.bin "$stage/nz-names.bin"
+cp web/public/data/au/reaches.bin "$stage/au-reaches.bin"
+cp web/public/data/au/reaches.pmtiles "$stage/au-reaches.pmtiles"
+cp web/public/data/au/names.bin "$stage/au-names.bin"
+
 gh release create data \
-  web/public/data/nz/reaches.bin#nz-reaches.bin \
-  web/public/data/nz/reaches.pmtiles#nz-reaches.pmtiles \
-  web/public/data/nz/names.bin#nz-names.bin \
-  web/public/data/au/reaches.bin#au-reaches.bin \
-  web/public/data/au/reaches.pmtiles#au-reaches.pmtiles \
-  web/public/data/au/names.bin#au-names.bin \
+  "$stage"/nz-reaches.bin \
+  "$stage"/nz-reaches.pmtiles \
+  "$stage"/nz-names.bin \
+  "$stage"/au-reaches.bin \
+  "$stage"/au-reaches.pmtiles \
+  "$stage"/au-names.bin \
   --title "River data" \
   --notes "NZ REC2 v5 and AU Geofabric V3.3 packed graph, PMTiles, and name index. Rebuild with export_graph --country then pipeline/scripts/build_tiles.sh."
 ```
 
-After a graph or tile rebuild, upload both files so they stay in lockstep:
+After a graph or tile rebuild, repeat the `stage=$(mktemp -d)` copy above, then:
 
 ```bash
-gh release upload data \
-  web/public/data/nz/reaches.bin#nz-reaches.bin \
-  web/public/data/nz/reaches.pmtiles#nz-reaches.pmtiles \
-  web/public/data/nz/names.bin#nz-names.bin \
-  web/public/data/au/reaches.bin#au-reaches.bin \
-  web/public/data/au/reaches.pmtiles#au-reaches.pmtiles \
-  web/public/data/au/names.bin#au-names.bin \
-  --clobber
+gh release upload data "$stage"/* --clobber
 ```
 
 Then re-run the **Publish image** workflow (`workflow_dispatch` or a push to `main`).

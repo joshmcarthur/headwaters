@@ -4,6 +4,9 @@ import "../../../design/Headwaters/tokens.css";
 import "../../../design/Headwaters/components/bundle.css";
 import "../styles/app.css";
 import { copy } from "../lib/copy";
+import { countryLabel, enabledCountries } from "../lib/countries";
+
+const shownCountries = enabledCountries();
 ---
 
 <html lang="en-NZ" data-theme="paper">
@@ -78,6 +81,23 @@ import { copy } from "../lib/copy";
             </div>
             <ul class="hw-search__list" id="river-search-list" role="listbox" hidden></ul>
           </div>
+          {
+            shownCountries.length > 1 && (
+              <div
+                class="hw-seg hw-country"
+                id="country-switch"
+                role="radiogroup"
+                aria-label={copy.countryGroup}
+              >
+                {shownCountries.map((code) => (
+                  <label class="hw-country__opt">
+                    <input type="radio" name="country" value={code} />
+                    {countryLabel(code)}
+                  </label>
+                ))}
+              </div>
+            )
+          }
           <button
             class="hw-iconbtn"
             id="theme-cycle"
@@ -158,7 +178,7 @@ import { copy } from "../lib/copy";
           </div>
           <details class="hw-disc" id="source-to-sea" hidden>
             <summary>
-              {copy.fromSourceToSea}
+              <span id="source-to-sea-label">{copy.fromSourceToSea}</span>
               <svg
                 class="hw-icon"
                 width="18"
@@ -187,9 +207,9 @@ import { copy } from "../lib/copy";
       <div class="hw-attr hw-attr-wrap">
         <span><a href={copy.attributionCreatedHref}>{copy.attributionCreated}</a></span>
         <span> · </span>
-        <span><a href={copy.attributionLicence}>{copy.attributionNetwork}</a></span>
+        <span><a id="attr-network" href={copy.attributionLicence}>{copy.attributionNetwork}</a></span>
         <span> · </span>
-        <span>{copy.attributionNames}</span>
+        <span id="attr-names">{copy.attributionNames}</span>
         <span> · </span>
         <span>{copy.attributionTerrain}</span>
       </div>
