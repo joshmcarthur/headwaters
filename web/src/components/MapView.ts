@@ -14,6 +14,8 @@ import { GraphStore } from "../lib/graph-store.ts";
 import { openByteCache } from "../lib/range-cache.ts";
 import { loadPrefixHits, loadStartHits } from "../lib/names-bin.ts";
 import { mountRiverSearch, type RiverHit } from "../lib/search.ts";
+import { mountRiverSheet } from "../lib/river-sheet.ts";
+import { framePadding } from "../lib/sheet.ts";
 import { THEME_EVENT } from "../lib/theme.ts";
 import { HILLSHADE_EXAGGERATION, sceneView } from "../lib/terrain-view.ts";
 import {
@@ -28,7 +30,6 @@ import {
 
 const TAP_PAD = 10;
 const SOURCE_LAYER = "reaches";
-const MOBILE_MQ = "(max-width: 720px)";
 const MAPTERHORN_TILEJSON = "https://tiles.mapterhorn.com/tilejson.json";
 const CONTEXT_RIVER_LAYER = "reaches";
 
@@ -167,8 +168,6 @@ function closeSourceToSea(): void {
 
 type LngLatBbox = [number, number, number, number];
 
-const SEARCH_PAD = { top: 88, right: 48, bottom: 16, left: 48 };
-
 function extendBbox(acc: LngLatBbox | null, lon: number, lat: number): LngLatBbox | null {
   if (!Number.isFinite(lon) || !Number.isFinite(lat)) return acc;
   if (!acc) return [lon, lat, lon, lat];
@@ -211,7 +210,7 @@ function frameRiver(map: MapLibreMap, bbox: LngLatBbox, duration = 800): void {
       [bbox[0], bbox[1]],
       [bbox[2], bbox[3]],
     ],
-    { padding: SEARCH_PAD, maxZoom: 12, bearing: map.getBearing() },
+    { padding: framePadding(map.getPadding()), maxZoom: 12, bearing: map.getBearing() },
   );
   map.easeTo({
     center: camera?.center ?? [(bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2],
@@ -336,22 +335,6 @@ function updatePanel(graph: GraphView | null, id: SegmentId | null, gap: boolean
     disc.hidden = true;
     fillSourceToSea([]);
   }
-}
-
-function bindDock(map: MapLibreMap): void {
-  const app = document.querySelector(".hw-app");
-  const dock = document.querySelector(".hw-dock");
-  if (!(app instanceof HTMLElement) || !(dock instanceof HTMLElement)) return;
-  const mq = window.matchMedia(MOBILE_MQ);
-  const sync = (): void => {
-    const h = mq.matches ? Math.round(dock.getBoundingClientRect().height) : 0;
-    app.style.setProperty("--dock-offset", `${h}px`);
-    map.setPadding({ top: 0, right: 0, bottom: h, left: 0 });
-  };
-  const ro = new ResizeObserver(sync);
-  ro.observe(dock);
-  mq.addEventListener("change", sync);
-  sync();
 }
 
 export async function mountMap(): Promise<void> {
@@ -594,10 +577,9 @@ export async function mountMap(): Promise<void> {
   if (map.loaded()) addRivers();
   else map.on("load", addRivers);
 
-  bindDock(map);
+  const riverSheet = mountRiverSheet(map);
   sourceToSeaDetails().addEventListener("toggle", () => {
-    const dock = document.querySelector(".hw-dock");
-    dock?.classList.toggle("hw-dock--expanded", sourceToSeaDetails().open);
+    if (sourceToSeaDetails().open) riverSheet.expandFromPeek();
   });
 
   let painted: number[] = [];
@@ -729,7 +711,9 @@ export async function mountMap(): Promise<void> {
       });
     }
     setContextDim(true);
+    const fromEmpty = el("river-panel").hidden;
     updatePanel(graph, id, gap);
+    riverSheet.afterPanelChange(fromEmpty);
     if (historyMode === "push") recordHash(id, "push");
     if (historyMode === "replace") recordHash(id, "replace");
     return true;

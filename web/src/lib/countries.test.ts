@@ -4,6 +4,7 @@ import {
   COUNTRIES,
   countryFromLocation,
   countryLabel,
+  countryShortLabel,
   countryUrl,
   parseEnabledCountries,
 } from "./countries.ts";
@@ -69,4 +70,6 @@ test("country URLs drop the previous hash", () => {
 test("country labels are New Zealand and Australia", () => {
   assert.equal(countryLabel("nz"), "New Zealand");
   assert.equal(countryLabel("au"), "Australia");
+  assert.equal(countryShortLabel("nz"), "NZ");
+  assert.equal(countryShortLabel("au"), "AU");
 });

@@ -203,3 +203,16 @@ export function countryLabel(code: CountryCode): string {
     }
   }
 }
+
+export function countryShortLabel(code: CountryCode): string {
+  switch (code) {
+    case "nz":
+      return copy.countryNzShort;
+    case "au":
+      return copy.countryAuShort;
+    default: {
+      const _never: never = code;
+      return _never;
+    }
+  }
+}
